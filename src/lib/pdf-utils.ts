@@ -27,33 +27,47 @@ export async function modifyReversePdfClient(reversePdfUri: string, curp: string
         
         const qrSize = 60; 
         const qrX = 30;
-        const qrY = height - qrSize - 30;
-        
-        // Draw a white rectangle to cover the old QR code and any text below it.
+        const qrY = height - qrSize - 30; // Y position for the QR code's bottom edge
+
+        // 1. Clear the area for the QR code by drawing a white rectangle.
+        // This covers the old QR code.
         firstPage.drawRectangle({
             x: qrX - 5,
-            y: qrY - 15,
+            y: qrY - 5,
             width: qrSize + 10,
-            height: qrSize + 20,
-            color: rgb(1, 1, 1), 
+            height: qrSize + 10,
+            color: rgb(1, 1, 1), // White
         });
 
+        // 2. Draw the new QR code on top of the cleared area.
         firstPage.drawImage(qrImage, {
             x: qrX,
             y: qrY,
             width: qrSize,
             height: qrSize,
         });
-
-        const textX = qrX +5;
-        const textY = qrY -4; 
         
+        // 3. Prepare to draw the text below the QR code.
+        const textSize = 4;
+        const textX = qrX + 5;
+        const textY = qrY - 12; // Position text further down for better spacing.
+
+        // 4. Clear the area for the new text, just in case old content is there.
+        firstPage.drawRectangle({
+            x: textX - 5,
+            y: textY - 2,
+            width: 60, // A generous width for a CURP.
+            height: textSize + 4,
+            color: rgb(1, 1, 1), // White
+        });
+        
+        // 5. Draw the new CURP text on its own clean background.
         firstPage.drawText(curp, {
             x: textX,
             y: textY,
             font: helveticaFont,
-            size: 4,
-            color: rgb(0, 0, 0),
+            size: textSize,
+            color: rgb(0, 0, 0), // Black
         });
 
         const modifiedPdfBase64 = await pdfDoc.saveAsBase64({ dataUri: true });
