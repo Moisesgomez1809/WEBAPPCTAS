@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, ArrowLeft, Stamp } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, ArrowLeft, Stamp, BarChart3 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
 import { addFolioToPdfClient } from '@/lib/pdf-utils';
@@ -93,6 +93,14 @@ export default function FolioClient() {
         title: "¡Éxito!",
         description: "Tu documento ha sido foliado exitosamente.",
       });
+
+      try {
+        const currentCount = parseInt(localStorage.getItem('folioCount') || '0', 10);
+        localStorage.setItem('folioCount', (currentCount + 1).toString());
+      } catch (e) {
+        console.error("Failed to update folio count", e);
+      }
+
     } catch (e: any) {
       console.error(e);
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
@@ -171,11 +179,17 @@ export default function FolioClient() {
         <p className="text-muted-foreground mt-2 text-lg">
           Añade un número de folio y código de barras únicos a la primera página de tu documento.
         </p>
-        <div className="mt-6">
+        <div className="mt-6 flex justify-center gap-4">
             <Link href="/">
                 <Button variant="outline">
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Volver a Acta Fusion
+                </Button>
+            </Link>
+            <Link href="/dashboard">
+                <Button variant="secondary">
+                    Ver Dashboard
+                    <BarChart3 className="ml-2 h-4 w-4" />
                 </Button>
             </Link>
         </div>

@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, ArrowRight } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, ArrowRight, BarChart3 } from 'lucide-react';
 import { extractIssuingEntity, getReversePdfAsDataUri, extractDocumentDetails } from './actions';
 import { mergePdfsClient, modifyReversePdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
@@ -215,6 +215,14 @@ export default function ActaFusionClient() {
         title: "¡Éxito!",
         description: "Tu PDF ha sido creado con el nuevo código QR.",
       });
+
+      try {
+        const currentCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
+        localStorage.setItem('fusionCount', (currentCount + 1).toString());
+      } catch (e) {
+        console.error("Failed to update fusion count", e);
+      }
+
     } catch (e: any) {
       console.error(e);
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
@@ -320,11 +328,17 @@ export default function ActaFusionClient() {
         <p className="text-muted-foreground mt-2 text-lg">
           Combina fácilmente tu acta de nacimiento con su reverso oficial.
         </p>
-         <div className="mt-6">
+         <div className="mt-6 flex justify-center gap-4">
             <Link href="/folio">
                 <Button variant="outline">
                     Ir a Foliar Documento
                     <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+            </Link>
+             <Link href="/dashboard">
+                <Button variant="secondary">
+                    Ver Dashboard
+                    <BarChart3 className="ml-2 h-4 w-4" />
                 </Button>
             </Link>
         </div>
