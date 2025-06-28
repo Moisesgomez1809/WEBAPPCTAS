@@ -1,7 +1,6 @@
 'use server';
 
 import { extractIssuingEntity as extractEntityFlow } from '@/ai/flows/extract-entity';
-import { matchReverseSide as matchReverseSideFlow } from '@/ai/flows/match-reverse-side';
 
 // This function attempts to convert a Google Drive viewer URL to a direct download link.
 // NOTE: The file in Google Drive must be shared with "Anyone with the link".
@@ -37,4 +36,3 @@ export async function getReversePdfAsDataUri(url: string): Promise<string> {
 
 // Re-export AI flows for easier and consistent import on the client-side component.
 export const extractIssuingEntity = extractEntityFlow;
-export const matchReverseSide = matchReverseSideFlow;

@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw } from 'lucide-react';
-import { extractIssuingEntity, matchReverseSide, getReversePdfAsDataUri } from './actions';
+import { extractIssuingEntity, getReversePdfAsDataUri } from './actions';
 import { mergePdfsClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { ReverseSideEntry } from '@/lib/types';
+import { useRouter } from 'next/navigation';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 type LoadingStep = 'idle' | 'extracting' | 'matching' | 'merging' | 'done';
@@ -17,20 +19,42 @@ type LoadingStep = 'idle' | 'extracting' | 'matching' | 'merging' | 'done';
 const loadingMessages: Record<LoadingStep, string> = {
   idle: 'Waiting to start...',
   extracting: 'Analyzing document to identify issuing entity...',
-  matching: 'Searching for the correct reverse side...',
+  matching: 'Searching for the correct reverse side in your database...',
   merging: 'Fusing the documents into a single PDF...',
   done: 'Your document is ready!',
 };
 
-const statesOfMexico = [
-  "Aguascalientes", "Baja California", "Baja California Sur", "Campeche", "Chiapas",
-  "Chihuahua", "Coahuila", "Colima", "Distrito Federal", "Durango", "Guanajuato",
-  "Guerrero", "Hidalgo", "Jalisco", "México", "Michoacán", "Morelos", "Nayarit",
-  "Nuevo León", "Oaxaca", "Puebla", "Querétaro", "Quintana Roo", "San Luis Potosí",
-  "Sinaloa", "Sonora", "Tabasco", "Tamaulipas", "Tlaxcala", "Veracruz", "Yucatán",
-  "Zacatecas", "Ciudad de México", "Estado de México"
-].sort();
+function normalizeString(str: string): string {
+    return str
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, '');
+}
 
+function findReverseSide(entity: string, db: ReverseSideEntry[]): ReverseSideEntry | null {
+    const normalizedEntity = normalizeString(entity);
+
+    // Handle special cases from old prompt
+    if (normalizedEntity.includes('distritofederal') || normalizedEntity.includes('ciudadmexico')) {
+        const df = db.find(e => normalizeString(e['entidad de registro']).includes('distritofederal'));
+        if (df) return df;
+    }
+    if (normalizedEntity.includes('mexico') && !normalizedEntity.includes('ciudadmexico') && !normalizedEntity.includes('nuevoleon')) {
+        const edoMex = db.find(e => normalizeString(e['entidad de registro']) === 'mexico' || normalizeString(e['entidad de registro']) === 'estadodemexico');
+        if (edoMex) return edoMex;
+    }
+
+    // Exact match
+    let match = db.find(e => normalizeString(e['entidad de registro']) === normalizedEntity);
+    if (match) return match;
+
+    // Partial match
+    match = db.find(e => normalizedEntity.includes(normalizeString(e['entidad de registro'])));
+    if (match) return match;
+
+    return null;
+}
 
 export default function ActaFusionClient() {
   const [originalFile, setOriginalFile] = useState<File | null>(null);
@@ -43,7 +67,35 @@ export default function ActaFusionClient() {
   const [entity, setEntity] = useState<string | null>(null);
   const [manualEntity, setManualEntity] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
+  const [db, setDb] = useState<ReverseSideEntry[]>([]);
+  const [availableStates, setAvailableStates] = useState<string[]>([]);
+  
   const { toast } = useToast();
+  const router = useRouter();
+
+
+  useEffect(() => {
+    // This runs on client, after the guard has passed.
+    try {
+      const dbString = localStorage.getItem('reverse-sides-db');
+      if (dbString) {
+        const parsedDb = JSON.parse(dbString) as ReverseSideEntry[];
+        setDb(parsedDb);
+        const states = parsedDb.map(e => e['entidad de registro']).sort();
+        setAvailableStates(states);
+      } else {
+        // This should not happen due to the guard, but as a fallback.
+        toast({ title: 'Database not found', description: 'Redirecting to upload page.', variant: 'destructive' });
+        router.replace('/upload');
+      }
+    } catch (e) {
+      console.error("Failed to load database from localStorage", e);
+      toast({ title: 'Database corrupted', description: 'Please upload the database file again.', variant: 'destructive' });
+      localStorage.removeItem('reverse-sides-db');
+      router.replace('/upload');
+    }
+  }, [router, toast]);
+
 
   const handleReset = useCallback(() => {
     if (previewUrl) {
@@ -122,11 +174,16 @@ export default function ActaFusionClient() {
       } else {
         setEntity(finalEntity);
       }
+      
+      const reverseSideEntry = findReverseSide(finalEntity, db);
+      if (!reverseSideEntry) {
+          throw new Error(`Could not find a matching reverse side for "${finalEntity}" in your database.`);
+      }
 
-      const reverseSideResult = await matchReverseSide({ entity: finalEntity });
+      const reverseSideUrl = reverseSideEntry['link del reverso para descarga directa'];
       setLoadingStep('merging');
-
-      const reversePdfDataUri = await getReversePdfAsDataUri(reverseSideResult.reverseSidePdfUrl);
+      
+      const reversePdfDataUri = await getReversePdfAsDataUri(reverseSideUrl);
       const mergedPdf = await mergePdfsClient(originalPdfUrl, reversePdfDataUri);
 
       setCombinedPdfUrl(mergedPdf);
@@ -207,7 +264,7 @@ export default function ActaFusionClient() {
                   <SelectValue placeholder="Select a state..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {statesOfMexico.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
+                  {availableStates.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Button onClick={() => processFusion(manualEntity, false)} disabled={!manualEntity} className="w-full">
