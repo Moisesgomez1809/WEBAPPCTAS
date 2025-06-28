@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw } from 'lucide-react';
-import { extractIssuingEntity, getReversePdfAsDataUri } from './actions';
-import { mergePdfsClient } from '@/lib/pdf-utils';
+import { extractIssuingEntity, getReversePdfAsDataUri, extractDocumentDetails } from './actions';
+import { mergePdfsClient, modifyReversePdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,12 +14,14 @@ import type { ReverseSideEntry } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
-type LoadingStep = 'idle' | 'extracting' | 'matching' | 'merging' | 'done';
+type LoadingStep = 'idle' | 'extracting' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'done';
 
 const loadingMessages: Record<LoadingStep, string> = {
   idle: 'Waiting to start...',
   extracting: 'Analyzing document to identify issuing entity...',
+  extractingDetails: 'Extracting CURP and Electronic ID...',
   matching: 'Searching for the correct reverse side in your database...',
+  modifying: 'Replacing QR code on reverse side...',
   merging: 'Fusing the documents into a single PDF...',
   done: 'Your document is ready!',
 };
@@ -166,14 +168,28 @@ export default function ActaFusionClient() {
 
     try {
       let finalEntity = entityToUse;
+
+      setLoadingStep('extractingDetails');
+      const detailsPromise = extractDocumentDetails({ pdfDataUri: originalPdfUrl });
+      
+      let entityPromise;
       if (isAuto) {
-        const entityResult = await extractIssuingEntity({ pdfDataUri: originalPdfUrl });
-        finalEntity = entityResult.issuingEntity;
-        setEntity(finalEntity);
-        setLoadingStep('matching');
+          setLoadingStep('extracting');
+          entityPromise = extractIssuingEntity({ pdfDataUri: originalPdfUrl });
       } else {
-        setEntity(finalEntity);
+          entityPromise = Promise.resolve({ issuingEntity: entityToUse });
       }
+
+      const [detailsResult, entityResult] = await Promise.all([detailsPromise, entityPromise]);
+      
+      finalEntity = entityResult.issuingEntity;
+      const { curp, electronicId } = detailsResult;
+      
+      if (!curp || !electronicId) {
+          throw new Error("Could not extract CURP or Electronic Identifier. Please ensure the document is clear.");
+      }
+      setEntity(finalEntity);
+      setLoadingStep('matching');
       
       const reverseSideEntry = findReverseSide(finalEntity, db);
       if (!reverseSideEntry) {
@@ -181,10 +197,13 @@ export default function ActaFusionClient() {
       }
 
       const reverseSideUrl = reverseSideEntry['link del reverso para descarga directa'];
-      setLoadingStep('merging');
-      
       const reversePdfDataUri = await getReversePdfAsDataUri(reverseSideUrl);
-      const mergedPdf = await mergePdfsClient(originalPdfUrl, reversePdfDataUri);
+
+      setLoadingStep('modifying');
+      const modifiedReversePdfUri = await modifyReversePdfClient(reversePdfDataUri, curp, electronicId);
+
+      setLoadingStep('merging');
+      const mergedPdf = await mergePdfsClient(originalPdfUrl, modifiedReversePdfUri);
 
       setCombinedPdfUrl(mergedPdf);
       await setMergedPreview(mergedPdf);
@@ -193,7 +212,7 @@ export default function ActaFusionClient() {
       setStatus('success');
       toast({
         title: "Success!",
-        description: "Your PDF has been successfully created.",
+        description: "Your PDF has been created with the new QR code.",
       });
     } catch (e: any) {
       console.error(e);
