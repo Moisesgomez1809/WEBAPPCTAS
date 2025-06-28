@@ -11,7 +11,7 @@ async function dataUriToUint8Array(dataUri: string): Promise<Uint8Array> {
 
 export async function modifyReversePdfClient(reversePdfUri: string, curp: string, electronicId: string): Promise<string> {
     try {
-        const qrCodeContent = `CURP: ${curp}\nID: ${electronicId}`;
+        const qrCodeContent = `CURP: ${curp}\nIDENTIFICADOR ELECTRONICO: ${electronicId}`;
         const qrCodeImageUri = await QRCode.toDataURL(qrCodeContent, { errorCorrectionLevel: 'M', margin: 2 });
         const qrCodeImageBytes = await dataUriToUint8Array(qrCodeImageUri);
         
@@ -45,13 +45,13 @@ export async function modifyReversePdfClient(reversePdfUri: string, curp: string
         });
 
         const textX = qrX;
-        const textY = qrY - 12; 
+        const textY = qrY -4; 
         
         firstPage.drawText(curp, {
             x: textX,
             y: textY,
             font: helveticaFont,
-            size: 8,
+            size: 5,
             color: rgb(0, 0, 0),
         });
 
