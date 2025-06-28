@@ -23,7 +23,7 @@ export async function getReversePdfAsDataUri(url: string): Promise<string> {
             // Google Drive might return an HTML page on failure, let's try to get more info
             const textResponse = await response.text();
             console.error(`Failed to fetch PDF from ${downloadUrl}. Status: ${response.status}. Response: ${textResponse}`);
-            throw new Error(`Failed to fetch PDF. Status: ${response.status}. Ensure the file is shared publicly in Google Drive.`);
+            throw new Error(`Failed to fetch PDF. The file might be private or the link is incorrect.`);
         }
         const arrayBuffer = await response.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
@@ -31,7 +31,7 @@ export async function getReversePdfAsDataUri(url: string): Promise<string> {
         return `data:application/pdf;base64,${base64}`;
     } catch (error) {
         console.error("Error fetching reverse PDF:", error);
-        throw new Error("Could not retrieve the reverse side PDF. Please check the URL and ensure the file's sharing permissions are set to 'Anyone with the link'.");
+        throw new Error("Could not retrieve the reverse side PDF. The file might be private or the link is incorrect.");
     }
 }
 
