@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, ArrowRight } from 'lucide-react';
 import { extractIssuingEntity, getReversePdfAsDataUri, extractDocumentDetails } from './actions';
 import { mergePdfsClient, modifyReversePdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ReverseSideEntry } from '@/lib/types';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 type LoadingStep = 'idle' | 'extracting' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'done';
@@ -319,6 +320,14 @@ export default function ActaFusionClient() {
         <p className="text-muted-foreground mt-2 text-lg">
           Easily combine your birth certificate with its official reverse side.
         </p>
+         <div className="mt-6">
+            <Link href="/folio">
+                <Button variant="outline">
+                    Ir a Foliar Documento
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+            </Link>
+        </div>
       </header>
       
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8">
