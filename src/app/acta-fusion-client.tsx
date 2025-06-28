@@ -268,11 +268,17 @@ export default function ActaFusionClient() {
             <CardContent className="flex-grow">
               <div className="w-full h-full bg-secondary rounded-lg flex items-center justify-center">
                 {previewUrl ? (
-                  <iframe
-                    src={previewUrl}
-                    className="w-full h-full border-0 rounded-lg"
-                    title="PDF Preview"
-                  />
+                   <object
+                    data={previewUrl}
+                    type="application/pdf"
+                    className="w-full h-full rounded-lg"
+                  >
+                     <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-8">
+                        <AlertCircle className="w-16 h-16 mx-auto mb-4 text-destructive"/>
+                        <p className="font-semibold">Unable to display PDF preview.</p>
+                        <p className="text-sm">Your browser may not support embedded previews. You can still process and download the file.</p>
+                      </div>
+                  </object>
                 ) : (
                   <div className="text-center text-muted-foreground p-8">
                     <FileCheck2 className="w-20 h-20 mx-auto mb-4"/>
