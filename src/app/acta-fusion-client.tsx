@@ -18,13 +18,13 @@ type Status = 'idle' | 'loading' | 'success' | 'error';
 type LoadingStep = 'idle' | 'extracting' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'done';
 
 const loadingMessages: Record<LoadingStep, string> = {
-  idle: 'Waiting to start...',
-  extracting: 'Analyzing document to identify issuing entity...',
-  extractingDetails: 'Extracting CURP and Electronic ID...',
-  matching: 'Searching for the correct reverse side in your database...',
-  modifying: 'Replacing QR code on reverse side...',
-  merging: 'Fusing the documents into a single PDF...',
-  done: 'Your document is ready!',
+  idle: 'Esperando para empezar...',
+  extracting: 'Analizando documento para identificar la entidad emisora...',
+  extractingDetails: 'Extrayendo CURP e Identificador Electrónico...',
+  matching: 'Buscando el reverso correcto en tu base de datos...',
+  modifying: 'Reemplazando el código QR en el reverso...',
+  merging: 'Fusionando los documentos en un solo PDF...',
+  done: '¡Tu documento está listo!',
 };
 
 function normalizeString(str: string): string {
@@ -88,12 +88,12 @@ export default function ActaFusionClient() {
         setAvailableStates(states);
       } else {
         // This should not happen due to the guard, but as a fallback.
-        toast({ title: 'Database not found', description: 'Redirecting to upload page.', variant: 'destructive' });
+        toast({ title: 'Base de datos no encontrada', description: 'Redirigiendo a la página de carga.', variant: 'destructive' });
         router.replace('/upload');
       }
     } catch (e) {
       console.error("Failed to load database from localStorage", e);
-      toast({ title: 'Database corrupted', description: 'Please upload the database file again.', variant: 'destructive' });
+      toast({ title: 'Base de datos corrupta', description: 'Por favor, carga el archivo de la base de datos de nuevo.', variant: 'destructive' });
       localStorage.removeItem('reverse-sides-db');
       router.replace('/upload');
     }
@@ -130,10 +130,10 @@ export default function ActaFusionClient() {
       reader.readAsDataURL(file);
       setError(null);
     } else {
-      setError('Please upload a valid PDF file.');
+      setError('Por favor, sube un archivo PDF válido.');
       toast({
-        title: "Invalid File Type",
-        description: "Please upload a valid PDF file.",
+        title: "Tipo de Archivo Inválido",
+        description: "Por favor, sube un archivo PDF válido.",
         variant: "destructive",
       })
     }
@@ -187,14 +187,14 @@ export default function ActaFusionClient() {
       const { curp, electronicId } = detailsResult;
       
       if (!curp || !electronicId) {
-          throw new Error("Could not extract CURP or Electronic Identifier. Please ensure the document is clear.");
+          throw new Error("No se pudo extraer la CURP o el Identificador Electrónico. Asegúrate de que el documento sea claro.");
       }
       setEntity(finalEntity);
       setLoadingStep('matching');
       
       const reverseSideEntry = findReverseSide(finalEntity, db);
       if (!reverseSideEntry) {
-          throw new Error(`Could not find a matching reverse side for "${finalEntity}" in your database.`);
+          throw new Error(`No se pudo encontrar un reverso para "${finalEntity}" en tu base de datos.`);
       }
 
       const reverseSideUrl = reverseSideEntry['link del reverso para descarga directa'];
@@ -212,16 +212,16 @@ export default function ActaFusionClient() {
       setLoadingStep('done');
       setStatus('success');
       toast({
-        title: "Success!",
-        description: "Your PDF has been created with the new QR code.",
+        title: "¡Éxito!",
+        description: "Tu PDF ha sido creado con el nuevo código QR.",
       });
     } catch (e: any) {
       console.error(e);
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-      setError(`Processing failed: ${errorMessage}`);
+      setError(`El proceso falló: ${errorMessage}`);
       setStatus('error');
       toast({
-        title: "Processing Failed",
+        title: "El Proceso Falló",
         description: errorMessage,
         variant: "destructive",
       })
@@ -246,8 +246,8 @@ export default function ActaFusionClient() {
       onClick={() => document.getElementById('file-upload')?.click()}
     >
       <FileUp className="w-16 h-16 text-primary mb-4" />
-      <h3 className="text-xl font-semibold text-foreground">Drag & drop your birth certificate</h3>
-      <p className="text-muted-foreground mt-2">or click to select a PDF file</p>
+      <h3 className="text-xl font-semibold text-foreground">Arrastra y suelta tu acta de nacimiento</h3>
+      <p className="text-muted-foreground mt-2">o haz clic para seleccionar un archivo PDF</p>
       <input id="file-upload" type="file" className="hidden" accept="application/pdf" onChange={(e) => handleFileChange(e.target.files ? e.target.files[0] : null)} />
     </div>
   );
@@ -255,7 +255,7 @@ export default function ActaFusionClient() {
   const renderProcessingState = () => (
     <Card>
       <CardHeader>
-        <CardTitle>File Information</CardTitle>
+        <CardTitle>Información del Archivo</CardTitle>
         <CardDescription>{originalFile?.name}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -263,51 +263,51 @@ export default function ActaFusionClient() {
           <div className="flex flex-col items-center justify-center space-y-4 p-8 bg-background rounded-lg">
             <Loader2 className="w-12 h-12 text-primary animate-spin" />
             <p className="text-lg font-medium text-foreground">{loadingMessages[loadingStep]}</p>
-            {entity && <p className="text-sm text-muted-foreground">Processing for: {entity}</p>}
+            {entity && <p className="text-sm text-muted-foreground">Procesando para: {entity}</p>}
           </div>
         ) : (
           <Tabs defaultValue="automatic" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="automatic">Automatic (AI)</TabsTrigger>
-              <TabsTrigger value="manual">Manual Selection</TabsTrigger>
+              <TabsTrigger value="automatic">Automático (IA)</TabsTrigger>
+              <TabsTrigger value="manual">Selección Manual</TabsTrigger>
             </TabsList>
             <TabsContent value="automatic" className="pt-4">
-               <p className="text-sm text-muted-foreground mb-4">Let AI analyze your document to find the correct reverse side.</p>
+               <p className="text-sm text-muted-foreground mb-4">Deja que la IA analice tu documento para encontrar el reverso correcto.</p>
                <Button onClick={() => processFusion('', true)} className="w-full">
-                <Sparkles className="mr-2 h-4 w-4" /> Fuse with AI
+                <Sparkles className="mr-2 h-4 w-4" /> Fusionar con IA
               </Button>
             </TabsContent>
             <TabsContent value="manual" className="pt-4 space-y-4">
-              <p className="text-sm text-muted-foreground">If the AI fails or identifies the wrong state, you can select it manually.</p>
+              <p className="text-sm text-muted-foreground">Si la IA falla o identifica el estado incorrecto, puedes seleccionarlo manually.</p>
                <Select onValueChange={setManualEntity} value={manualEntity}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a state..." />
+                  <SelectValue placeholder="Selecciona un estado..." />
                 </SelectTrigger>
                 <SelectContent>
                   {availableStates.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Button onClick={() => processFusion(manualEntity, false)} disabled={!manualEntity} className="w-full">
-                <Sparkles className="mr-2 h-4 w-4" /> Fuse with Selected State
+                <Sparkles className="mr-2 h-4 w-4" /> Fusionar con Estado Seleccionado
               </Button>
             </TabsContent>
           </Tabs>
         )}
 
         {status === 'success' && combinedPdfUrl && (
-          <Button asChild className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Button asChild className="w-full bg-green-500 hover:bg-green-600 text-white">
             <a href={combinedPdfUrl} download="acta-fusionada.pdf">
-              <Download className="mr-2 h-4 w-4" /> Download Fused PDF
+              <Download className="mr-2 h-4 w-4" /> Descargar PDF Fusionado
             </a>
           </Button>
         )}
       </CardContent>
       <CardFooter className="flex-col sm:flex-row gap-2 justify-between items-center">
          {entity && status !== 'loading' && (
-            <p className="text-sm text-muted-foreground">Identified Entity: <strong>{entity}</strong></p>
+            <p className="text-sm text-muted-foreground">Entidad Identificada: <strong>{entity}</strong></p>
          )}
          <Button onClick={handleReset} variant="outline" className="w-full sm:w-auto mt-2 sm:mt-0 ml-auto">
-            <RefreshCcw className="mr-2 h-4 w-4" /> Start Over
+            <RefreshCcw className="mr-2 h-4 w-4" /> Empezar de Nuevo
           </Button>
       </CardFooter>
     </Card>
@@ -318,7 +318,7 @@ export default function ActaFusionClient() {
       <header className="text-center mb-10">
         <h1 className="text-5xl font-bold text-primary font-headline">Acta Fusion</h1>
         <p className="text-muted-foreground mt-2 text-lg">
-          Easily combine your birth certificate with its official reverse side.
+          Combina fácilmente tu acta de nacimiento con su reverso oficial.
         </p>
          <div className="mt-6">
             <Link href="/folio">
@@ -345,9 +345,9 @@ export default function ActaFusionClient() {
         <div className="lg:h-[70vh]">
           <Card className="h-full flex flex-col">
             <CardHeader>
-              <CardTitle>PDF Preview</CardTitle>
+              <CardTitle>Vista Previa del PDF</CardTitle>
               <CardDescription>
-                {combinedPdfUrl ? 'Your fused document is ready below.' : (previewUrl ? 'Preview of your uploaded document.' : 'Upload a file to see the preview.')}
+                {combinedPdfUrl ? 'Tu documento fusionado está listo abajo.' : (previewUrl ? 'Vista previa de tu documento cargado.' : 'Sube un archivo para ver la vista previa.')}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
@@ -360,14 +360,14 @@ export default function ActaFusionClient() {
                   >
                      <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-8">
                         <AlertCircle className="w-16 h-16 mx-auto mb-4 text-destructive"/>
-                        <p className="font-semibold">Unable to display PDF preview.</p>
-                        <p className="text-sm">Your browser may not support embedded previews. You can still process and download the file.</p>
+                        <p className="font-semibold">No se puede mostrar la vista previa del PDF.</p>
+                        <p className="text-sm">Es posible que tu navegador no admita vistas previas incrustadas. Aún puedes procesar y descargar el archivo.</p>
                       </div>
                   </object>
                 ) : (
                   <div className="text-center text-muted-foreground p-8">
                     <FileCheck2 className="w-20 h-20 mx-auto mb-4"/>
-                    <p>Preview will appear here</p>
+                    <p>La vista previa aparecerá aquí</p>
                   </div>
                 )}
               </div>

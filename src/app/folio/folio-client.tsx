@@ -48,10 +48,10 @@ export default function FolioClient() {
       reader.readAsDataURL(file);
       setError(null);
     } else {
-      setError('Please upload a valid PDF file.');
+      setError('Por favor, sube un archivo PDF válido.');
       toast({
-        title: "Invalid File Type",
-        description: "Please upload a valid PDF file.",
+        title: "Tipo de Archivo Inválido",
+        description: "Por favor, sube un archivo PDF válido.",
         variant: "destructive",
       })
     }
@@ -90,16 +90,16 @@ export default function FolioClient() {
 
       setStatus('success');
       toast({
-        title: "Success!",
-        description: "Your document has been successfully foliated.",
+        title: "¡Éxito!",
+        description: "Tu documento ha sido foliado exitosamente.",
       });
     } catch (e: any) {
       console.error(e);
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-      setError(`Processing failed: ${errorMessage}`);
+      setError(`El proceso falló: ${errorMessage}`);
       setStatus('error');
       toast({
-        title: "Processing Failed",
+        title: "El Proceso Falló",
         description: errorMessage,
         variant: "destructive",
       })
@@ -124,8 +124,8 @@ export default function FolioClient() {
       onClick={() => document.getElementById('file-upload')?.click()}
     >
       <FileUp className="w-16 h-16 text-primary mb-4" />
-      <h3 className="text-xl font-semibold text-foreground">Drag & drop your document</h3>
-      <p className="text-muted-foreground mt-2">or click to select a PDF file to foliate</p>
+      <h3 className="text-xl font-semibold text-foreground">Arrastra y suelta tu documento</h3>
+      <p className="text-muted-foreground mt-2">o haz clic para seleccionar un archivo PDF para foliar</p>
       <input id="file-upload" type="file" className="hidden" accept="application/pdf" onChange={(e) => handleFileChange(e.target.files ? e.target.files[0] : null)} />
     </div>
   );
@@ -133,14 +133,14 @@ export default function FolioClient() {
   const renderProcessingState = () => (
     <Card>
       <CardHeader>
-        <CardTitle>File Information</CardTitle>
+        <CardTitle>Información del Archivo</CardTitle>
         <CardDescription>{originalFile?.name}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {status === 'loading' ? (
           <div className="flex flex-col items-center justify-center space-y-4 p-8 bg-background rounded-lg">
             <Loader2 className="w-12 h-12 text-primary animate-spin" />
-            <p className="text-lg font-medium text-foreground">Adding folio to your document...</p>
+            <p className="text-lg font-medium text-foreground">Añadiendo folio a tu documento...</p>
           </div>
         ) : (
           <Button onClick={handleFoliate} className="w-full">
@@ -149,16 +149,16 @@ export default function FolioClient() {
         )}
 
         {status === 'success' && foliatedPdfUrl && (
-          <Button asChild className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Button asChild className="w-full bg-green-500 hover:bg-green-600 text-white">
             <a href={foliatedPdfUrl} download={`${originalFile?.name.replace('.pdf', '')}-foliado.pdf`}>
-              <Download className="mr-2 h-4 w-4" /> Download Foliated PDF
+              <Download className="mr-2 h-4 w-4" /> Descargar PDF Foliado
             </a>
           </Button>
         )}
       </CardContent>
       <CardFooter>
          <Button onClick={handleReset} variant="outline" className="w-full">
-            <RefreshCcw className="mr-2 h-4 w-4" /> Start Over
+            <RefreshCcw className="mr-2 h-4 w-4" /> Empezar de Nuevo
           </Button>
       </CardFooter>
     </Card>
@@ -169,7 +169,7 @@ export default function FolioClient() {
       <header className="text-center mb-10">
         <h1 className="text-5xl font-bold text-primary font-headline">Foliar Documento</h1>
         <p className="text-muted-foreground mt-2 text-lg">
-          Add a unique folio number and barcode to your document's first page.
+          Añade un número de folio y código de barras únicos a la primera página de tu documento.
         </p>
         <div className="mt-6">
             <Link href="/">
@@ -196,9 +196,9 @@ export default function FolioClient() {
         <div className="lg:h-[70vh]">
           <Card className="h-full flex flex-col">
             <CardHeader>
-              <CardTitle>PDF Preview</CardTitle>
+              <CardTitle>Vista Previa del PDF</CardTitle>
               <CardDescription>
-                {foliatedPdfUrl ? 'Your foliated document is ready below.' : (previewUrl ? 'Preview of your uploaded document.' : 'Upload a file to see the preview.')}
+                {foliatedPdfUrl ? 'Tu documento foliado está listo abajo.' : (previewUrl ? 'Vista previa de tu documento cargado.' : 'Sube un archivo para ver la vista previa.')}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
@@ -211,14 +211,14 @@ export default function FolioClient() {
                   >
                      <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-8">
                         <AlertCircle className="w-16 h-16 mx-auto mb-4 text-destructive"/>
-                        <p className="font-semibold">Unable to display PDF preview.</p>
-                        <p className="text-sm">Your browser may not support embedded previews. You can still process and download the file.</p>
+                        <p className="font-semibold">No se puede mostrar la vista previa del PDF.</p>
+                        <p className="text-sm">Es posible que tu navegador no admita vistas previas incrustadas. Aún puedes procesar y descargar el archivo.</p>
                       </div>
                   </object>
                 ) : (
                   <div className="text-center text-muted-foreground p-8">
                     <FileCheck2 className="w-20 h-20 mx-auto mb-4"/>
-                    <p>Preview will appear here</p>
+                    <p>La vista previa aparecerá aquí</p>
                   </div>
                 )}
               </div>
