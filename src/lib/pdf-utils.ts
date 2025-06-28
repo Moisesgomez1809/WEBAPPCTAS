@@ -45,14 +45,14 @@ export async function modifyReversePdfClient(reversePdfUri: string, curp: string
             height: qrSize,
         });
 
-        const textX = qrX;
+        const textX = qrX +5;
         const textY = qrY -4; 
         
         firstPage.drawText(curp, {
             x: textX,
             y: textY,
             font: helveticaFont,
-            size: 5,
+            size: 4,
             color: rgb(0, 0, 0),
         });
 
