@@ -3,24 +3,25 @@
 import * as React from "react"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
+import { useState, useEffect } from "react"
 
 import { Switch } from "@/components/ui/switch"
 
 export function ThemeSwitcher() {
-  const { resolvedTheme, setTheme } = useTheme()
-  const [mounted, setMounted] = React.useState(false)
+  const [mounted, setMounted] = useState(false)
+  const { theme, setTheme } = useTheme()
 
-  React.useEffect(() => {
+  // useEffect only runs on the client, so we can safely set the mounted state
+  useEffect(() => {
     setMounted(true)
   }, [])
 
   if (!mounted) {
-    // To prevent layout shift, we can render a placeholder
-    return <div className="absolute top-4 right-4 z-50 h-6 w-24" />;
+    return null
   }
-  
+
   const toggleTheme = () => {
-    setTheme(resolvedTheme === "dark" ? "light" : "dark")
+    setTheme(theme === "dark" ? "light" : "dark")
   }
   
   return (
@@ -28,7 +29,7 @@ export function ThemeSwitcher() {
       <Sun className="h-5 w-5 text-primary" />
       <Switch
         id="theme-switch"
-        checked={resolvedTheme === "dark"}
+        checked={theme === "dark"}
         onCheckedChange={toggleTheme}
         aria-label="Toggle theme"
       />
