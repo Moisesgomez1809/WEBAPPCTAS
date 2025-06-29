@@ -28,7 +28,7 @@ export async function modifyReversePdfClient(reversePdfUri: string, curp: string
         const qrSize = 60; 
         const qrX = 30;
         const qrY = height - qrSize - 30; 
-        const textSize = 4;
+        const textSize = 5;
         const textYOffset = 5;
         
         // A single white rectangle to act as a background for both the QR code and the text
@@ -49,7 +49,7 @@ export async function modifyReversePdfClient(reversePdfUri: string, curp: string
         });
         
         // Draw the CURP text just below the QR code
-        const textX = qrX + 5;
+        const textX = qrX + 3;
         const textY = qrY - textYOffset; 
 
         firstPage.drawText(curp, {
