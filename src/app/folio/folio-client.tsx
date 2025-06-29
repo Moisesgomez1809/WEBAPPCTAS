@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, ArrowLeft, Stamp, BarChart3 } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, ArrowLeft, Stamp, BarChart3, Combine, Frame } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
 import { addFolioToPdfClient } from '@/lib/pdf-utils';
@@ -179,11 +179,17 @@ export default function FolioClient() {
         <p className="text-muted-foreground mt-2 text-lg">
           Añade un número de folio y código de barras únicos a la primera página de tu documento.
         </p>
-        <div className="mt-6 flex justify-center gap-4">
+        <div className="mt-6 flex justify-center gap-4 flex-wrap">
             <Link href="/">
                 <Button variant="outline">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Volver a Acta Fusion
+                    <Combine className="mr-2 h-4 w-4" />
+                    Ir a Acta Fusion
+                </Button>
+            </Link>
+            <Link href="/frame">
+                <Button variant="outline">
+                    <Frame className="mr-2 h-4 w-4" />
+                    Enmarcar Acta
                 </Button>
             </Link>
             <Link href="/dashboard">

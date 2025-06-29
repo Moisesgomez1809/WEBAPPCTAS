@@ -27,20 +27,17 @@ export async function modifyReversePdfClient(reversePdfUri: string, curp: string
         
         const qrSize = 60; 
         const qrX = 30;
-        const qrY = height - qrSize - 30; // Y position for the QR code's bottom edge
+        const qrY = height - qrSize - 30; 
         const textSize = 4;
         
-        // 1. Clear the entire area for the new QR code and the text below it
-        // by drawing a single, larger white rectangle. This prevents rendering issues.
         firstPage.drawRectangle({
             x: qrX - 5,
-            y: qrY - textSize - 5, // Start from below where the text will be
+            y: qrY - textSize - 7,
             width: qrSize + 10,
-            height: qrSize + textSize + 10, // Cover QR, text, and padding
-            color: rgb(1, 1, 1), // White
+            height: qrSize + textSize + 10,
+            color: rgb(1, 1, 1), 
         });
 
-        // 2. Draw the new QR code on top of the cleared area.
         firstPage.drawImage(qrImage, {
             x: qrX,
             y: qrY,
@@ -48,16 +45,15 @@ export async function modifyReversePdfClient(reversePdfUri: string, curp: string
             height: qrSize,
         });
         
-        // 3. Draw the new CURP text on the clean background, positioned closely below the QR code.
         const textX = qrX + 5;
-        const textY = qrY - 5; // Position text baseline 5 units below the QR's bottom edge.
+        const textY = qrY - 5; 
 
         firstPage.drawText(curp, {
             x: textX,
             y: textY,
             font: helveticaFont,
             size: textSize,
-            color: rgb(0, 0, 0), // Black
+            color: rgb(0, 0, 0),
         });
 
         const modifiedPdfBase64 = await pdfDoc.saveAsBase64({ dataUri: true });
@@ -156,5 +152,40 @@ export async function addFolioToPdfClient(pdfUri: string): Promise<string> {
     } catch (error) {
         console.error("Error adding folio to PDF:", error);
         throw new Error("Failed to add folio and barcode to the document.");
+    }
+}
+
+
+export async function framePdfClient(originalPdfUri: string, framePdfUri: string): Promise<string> {
+    try {
+        const originalPdfBytes = await dataUriToUint8Array(originalPdfUri);
+        const framePdfBytes = await dataUriToUint8Array(framePdfUri);
+
+        const frameDoc = await PDFDocument.load(framePdfBytes);
+        const originalDoc = await PDFDocument.load(originalPdfBytes);
+
+        const framePage = frameDoc.getPage(0);
+        const [originalPageToEmbed] = await frameDoc.copyPages(originalDoc, [0]);
+
+        const { width: frameWidth, height: frameHeight } = framePage.getSize();
+        
+        // These are assumed margins. Adjust if needed.
+        const marginX = 40;
+        const marginY = 40;
+        const embedWidth = frameWidth - (marginX * 2);
+        const embedHeight = frameHeight - (marginY * 2) - 50;
+
+        framePage.drawPage(originalPageToEmbed, {
+            x: marginX,
+            y: marginY,
+            width: embedWidth,
+            height: embedHeight,
+        });
+
+        const modifiedPdfBase64 = await frameDoc.saveAsBase64({ dataUri: true });
+        return modifiedPdfBase64;
+    } catch (error) {
+        console.error("Error framing PDF:", error);
+        throw new Error("Failed to frame the PDF document. Ensure the frame PDF is valid.");
     }
 }

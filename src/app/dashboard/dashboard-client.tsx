@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2 } from 'lucide-react';
+import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -23,20 +23,23 @@ interface Stats {
   total: number;
   fusions: number;
   folios: number;
+  frames: number;
 }
 
 export default function DashboardClient() {
-  const [stats, setStats] = useState<Stats>({ total: 0, fusions: 0, folios: 0 });
+  const [stats, setStats] = useState<Stats>({ total: 0, fusions: 0, folios: 0, frames: 0 });
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
     const fusions = parseInt(localStorage.getItem('fusionCount') || '0', 10);
     const folios = parseInt(localStorage.getItem('folioCount') || '0', 10);
+    const frames = parseInt(localStorage.getItem('frameCount') || '0', 10);
     setStats({
-      total: fusions + folios,
+      total: fusions + folios + frames,
       fusions,
       folios,
+      frames,
     });
   }, []);
 
@@ -44,7 +47,8 @@ export default function DashboardClient() {
     try {
         localStorage.setItem('fusionCount', '0');
         localStorage.setItem('folioCount', '0');
-        setStats({ total: 0, fusions: 0, folios: 0 });
+        localStorage.setItem('frameCount', '0');
+        setStats({ total: 0, fusions: 0, folios: 0, frames: 0 });
         toast({
             title: "Estadísticas Reiniciadas",
             description: "Los contadores han sido puestos a cero.",
@@ -69,7 +73,7 @@ export default function DashboardClient() {
         </header>
 
         <div className="w-full max-w-4xl space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Trámites Totales</CardTitle>
@@ -77,7 +81,7 @@ export default function DashboardClient() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-4xl font-bold">{stats.total}</div>
-                        <p className="text-xs text-muted-foreground pt-1">Suma de fusiones y foliados</p>
+                        <p className="text-xs text-muted-foreground pt-1">Suma de todos los trámites</p>
                     </CardContent>
                 </Card>
                  <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
@@ -100,6 +104,16 @@ export default function DashboardClient() {
                         <p className="text-xs text-muted-foreground pt-1">Documentos con folio único</p>
                     </CardContent>
                 </Card>
+                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Actas Enmarcadas</CardTitle>
+                        <Frame className="h-5 w-5 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-4xl font-bold">{stats.frames}</div>
+                        <p className="text-xs text-muted-foreground pt-1">Documentos con marco añadido</p>
+                    </CardContent>
+                </Card>
             </div>
 
             <Card>
@@ -110,8 +124,14 @@ export default function DashboardClient() {
                 <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                      <Link href="/" className="w-full">
                         <Button variant="outline" className="w-full h-12">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            <Combine className="mr-2 h-4 w-4" />
                             Ir a Acta Fusion
+                        </Button>
+                    </Link>
+                    <Link href="/frame" className="w-full">
+                        <Button variant="outline" className="w-full h-12">
+                            <Frame className="mr-2 h-4 w-4" />
+                            Ir a Enmarcar
                         </Button>
                     </Link>
                     <Link href="/upload" className="w-full">

@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, ArrowRight, BarChart3 } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, ArrowRight, BarChart3, Frame, Stamp } from 'lucide-react';
 import { extractIssuingEntity, getReversePdfAsDataUri, extractDocumentDetails } from './actions';
 import { mergePdfsClient, modifyReversePdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
@@ -333,11 +333,17 @@ export default function ActaFusionClient() {
         <p className="text-muted-foreground mt-2 text-lg">
           Combina fácilmente tu acta de nacimiento con su reverso oficial.
         </p>
-         <div className="mt-6 flex justify-center gap-4">
+         <div className="mt-6 flex justify-center gap-4 flex-wrap">
+            <Link href="/frame">
+                <Button variant="outline">
+                    Enmarcar Acta
+                    <Frame className="ml-2 h-4 w-4" />
+                </Button>
+            </Link>
             <Link href="/folio">
                 <Button variant="outline">
-                    Ir a Foliar Documento
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    Foliar Documento
+                    <Stamp className="ml-2 h-4 w-4" />
                 </Button>
             </Link>
              <Link href="/dashboard">
