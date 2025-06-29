@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -8,6 +9,7 @@ import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, ArrowLe
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
 import { addFolioToPdfClient } from '@/lib/pdf-utils';
+import UtilitiesCalculator from '@/components/utilities-calculator';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
@@ -21,6 +23,16 @@ export default function FolioClient() {
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
 
+  const [providerCost, setProviderCost] = useState('');
+  const [clientCost, setClientCost] = useState('');
+  const [profit, setProfit] = useState(0);
+
+  useEffect(() => {
+    const pCost = parseFloat(providerCost) || 0;
+    const cCost = parseFloat(clientCost) || 0;
+    setProfit(cCost - pCost);
+  }, [providerCost, clientCost]);
+
   const handleReset = useCallback(() => {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
@@ -31,6 +43,8 @@ export default function FolioClient() {
     setFoliatedPdfUrl(null);
     setStatus('idle');
     setError(null);
+    setProviderCost('');
+    setClientCost('');
   }, [previewUrl]);
 
   const handleFileChange = (file: File | null) => {
@@ -76,6 +90,40 @@ export default function FolioClient() {
     }
   };
 
+  const handleDownloadAndSave = () => {
+    if (!foliatedPdfUrl) return;
+
+    try {
+      if (profit > 0) {
+        const currentProfit = parseFloat(localStorage.getItem('totalProfit') || '0');
+        const newTotalProfit = currentProfit + profit;
+        localStorage.setItem('totalProfit', newTotalProfit.toString());
+         toast({
+            title: "Utilidad Guardada",
+            description: `Se añadieron ${new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(profit)} a tus ganancias.`,
+        });
+      }
+
+      const currentCount = parseInt(localStorage.getItem('folioCount') || '0', 10);
+      localStorage.setItem('folioCount', (currentCount + 1).toString());
+
+      const link = document.createElement('a');
+      link.href = foliatedPdfUrl;
+      link.download = `${originalFile?.name.replace('.pdf', '')}-foliado.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e) {
+      console.error("Failed to save data or download", e);
+      toast({
+        title: "Error",
+        description: "No se pudo guardar la utilidad o descargar el archivo.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
   const handleFoliate = async () => {
     if (!pdfDataUri) return;
 
@@ -93,13 +141,6 @@ export default function FolioClient() {
         title: "¡Éxito!",
         description: "Tu documento ha sido foliado exitosamente.",
       });
-
-      try {
-        const currentCount = parseInt(localStorage.getItem('folioCount') || '0', 10);
-        localStorage.setItem('folioCount', (currentCount + 1).toString());
-      } catch (e) {
-        console.error("Failed to update folio count", e);
-      }
 
     } catch (e: any) {
       console.error(e);
@@ -151,18 +192,26 @@ export default function FolioClient() {
             <p className="text-lg font-medium text-foreground">Añadiendo folio a tu documento...</p>
           </div>
         ) : (
-          <Button onClick={handleFoliate} className="w-full">
-            <Stamp className="mr-2 h-4 w-4" /> Foliar Documento
-          </Button>
+          status !== 'success' && (
+            <Button onClick={handleFoliate} className="w-full">
+              <Stamp className="mr-2 h-4 w-4" /> Foliar Documento
+            </Button>
+          )
         )}
 
         {status === 'success' && foliatedPdfUrl && (
-          <Button asChild className="w-full bg-green-500 hover:bg-green-600 text-white">
-            <a href={foliatedPdfUrl} download={`${originalFile?.name.replace('.pdf', '')}-foliado.pdf`}>
+          <Button onClick={handleDownloadAndSave} className="w-full bg-green-500 hover:bg-green-600 text-white">
               <Download className="mr-2 h-4 w-4" /> Descargar PDF Foliado
-            </a>
           </Button>
         )}
+        
+        <UtilitiesCalculator
+          providerCost={providerCost}
+          clientCost={clientCost}
+          profit={profit}
+          onProviderCostChange={setProviderCost}
+          onClientCostChange={setClientCost}
+        />
       </CardContent>
       <CardFooter>
          <Button onClick={handleReset} variant="outline" className="w-full">

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -5,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame } from 'lucide-react';
+import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -24,10 +25,11 @@ interface Stats {
   fusions: number;
   folios: number;
   frames: number;
+  profit: number;
 }
 
 export default function DashboardClient() {
-  const [stats, setStats] = useState<Stats>({ total: 0, fusions: 0, folios: 0, frames: 0 });
+  const [stats, setStats] = useState<Stats>({ total: 0, fusions: 0, folios: 0, frames: 0, profit: 0 });
   const router = useRouter();
   const { toast } = useToast();
 
@@ -35,11 +37,13 @@ export default function DashboardClient() {
     const fusions = parseInt(localStorage.getItem('fusionCount') || '0', 10);
     const folios = parseInt(localStorage.getItem('folioCount') || '0', 10);
     const frames = parseInt(localStorage.getItem('frameCount') || '0', 10);
+    const profit = parseFloat(localStorage.getItem('totalProfit') || '0');
     setStats({
       total: fusions + folios + frames,
       fusions,
       folios,
       frames,
+      profit,
     });
   }, []);
 
@@ -48,7 +52,8 @@ export default function DashboardClient() {
         localStorage.setItem('fusionCount', '0');
         localStorage.setItem('folioCount', '0');
         localStorage.setItem('frameCount', '0');
-        setStats({ total: 0, fusions: 0, folios: 0, frames: 0 });
+        localStorage.setItem('totalProfit', '0');
+        setStats({ total: 0, fusions: 0, folios: 0, frames: 0, profit: 0 });
         toast({
             title: "Estadísticas Reiniciadas",
             description: "Los contadores han sido puestos a cero.",
@@ -72,8 +77,8 @@ export default function DashboardClient() {
             </p>
         </header>
 
-        <div className="w-full max-w-4xl space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="w-full max-w-5xl space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Trámites Totales</CardTitle>
@@ -82,6 +87,18 @@ export default function DashboardClient() {
                     <CardContent>
                         <div className="text-4xl font-bold">{stats.total}</div>
                         <p className="text-xs text-muted-foreground pt-1">Suma de todos los trámites</p>
+                    </CardContent>
+                </Card>
+                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Utilidad Total</CardTitle>
+                        <Wallet className="h-5 w-5 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-4xl font-bold text-green-600">
+                            {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(stats.profit)}
+                        </div>
+                        <p className="text-xs text-muted-foreground pt-1">Ganancia acumulada de todos los trámites</p>
                     </CardContent>
                 </Card>
                  <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
@@ -149,9 +166,9 @@ export default function DashboardClient() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
-                            <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                            <AlertDialogTitle>¿Estás absolutely seguro?</AlertDialogTitle>
                             <AlertDialogDescription>
-                                Esta acción no se puede deshacer. Esto pondrá a cero todos los contadores de trámites.
+                                Esta acción no se puede deshacer. Esto pondrá a cero todos los contadores de trámites y las ganancias.
                             </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
