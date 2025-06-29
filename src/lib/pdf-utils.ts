@@ -181,7 +181,7 @@ export async function framePdfClient(originalPdfUri: string, framePdfUri: string
         // Adjust these values to change the size and position of the embedded page.
         // Smaller margins make the embedded page bigger.
         // Increasing `y` (pageMargin.bottom) pushes the page up.
-        const pageMargin = { top: 30, bottom: 50, left: 35, right: 35 };
+        const pageMargin = { top: 20, bottom: 40, left: 25, right: 25 };
 
         const embedWidth = frameWidth - pageMargin.left - pageMargin.right;
         const embedHeight = frameHeight - pageMargin.top - pageMargin.bottom;
