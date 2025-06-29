@@ -29,15 +29,18 @@ export async function modifyReversePdfClient(reversePdfUri: string, curp: string
         const qrX = 30;
         const qrY = height - qrSize - 30; 
         const textSize = 4;
+        const textYOffset = 5;
         
+        // A single white rectangle to act as a background for both the QR code and the text
         firstPage.drawRectangle({
             x: qrX - 5,
-            y: qrY - textSize - 7,
+            y: qrY - textSize - (textYOffset + 2), // Adjusted y to include space for text
             width: qrSize + 10,
-            height: qrSize + textSize + 10,
+            height: qrSize + textSize + (textYOffset + 4), // Adjusted height
             color: rgb(1, 1, 1), 
         });
 
+        // Draw the new QR code
         firstPage.drawImage(qrImage, {
             x: qrX,
             y: qrY,
@@ -45,8 +48,9 @@ export async function modifyReversePdfClient(reversePdfUri: string, curp: string
             height: qrSize,
         });
         
+        // Draw the CURP text just below the QR code
         const textX = qrX + 5;
-        const textY = qrY - 5; 
+        const textY = qrY - textYOffset; 
 
         firstPage.drawText(curp, {
             x: textX,
@@ -174,16 +178,18 @@ export async function framePdfClient(originalPdfUri: string, framePdfUri: string
 
         const { width: frameWidth, height: frameHeight } = framePage.getSize();
         
-        // These are assumed margins. Adjust if needed.
-        const marginX = 40;
-        const marginY = 40;
-        const embedWidth = frameWidth - (marginX * 2);
-        const embedHeight = frameHeight - (marginY * 2) - 50;
+        // Adjust these values to change the size and position of the embedded page.
+        // Smaller margins make the embedded page bigger.
+        // Increasing `y` (pageMargin.bottom) pushes the page up.
+        const pageMargin = { top: 30, bottom: 50, left: 35, right: 35 };
+
+        const embedWidth = frameWidth - pageMargin.left - pageMargin.right;
+        const embedHeight = frameHeight - pageMargin.top - pageMargin.bottom;
 
         // Draw the embedded page onto the frame page
         framePage.drawPage(embeddedPage, {
-            x: marginX,
-            y: marginY,
+            x: pageMargin.left,
+            y: pageMargin.bottom,
             width: embedWidth,
             height: embedHeight,
         });
