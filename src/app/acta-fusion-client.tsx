@@ -72,6 +72,7 @@ export default function ActaFusionClient() {
   const [isDragging, setIsDragging] = useState(false);
   const [db, setDb] = useState<ReverseSideEntry[]>([]);
   const [availableStates, setAvailableStates] = useState<string[]>([]);
+  const [extractedCurp, setExtractedCurp] = useState<string | null>(null);
   
   const { toast } = useToast();
   const router = useRouter();
@@ -113,6 +114,7 @@ export default function ActaFusionClient() {
     setError(null);
     setEntity(null);
     setManualEntity("");
+    setExtractedCurp(null);
   }, [previewUrl]);
 
   const handleFileChange = (file: File | null) => {
@@ -166,6 +168,7 @@ export default function ActaFusionClient() {
     setLoadingStep(isAuto ? 'extracting' : 'matching');
     setError(null);
     setEntity(null);
+    setExtractedCurp(null);
 
     try {
       let finalEntity = entityToUse;
@@ -185,6 +188,8 @@ export default function ActaFusionClient() {
       
       finalEntity = entityResult.issuingEntity;
       const { curp, electronicId } = detailsResult;
+
+      setExtractedCurp(curp);
       
       if (!curp || !electronicId) {
           throw new Error("No se pudo extraer la CURP o el Identificador Electrónico. Asegúrate de que el documento sea claro.");
@@ -304,7 +309,7 @@ export default function ActaFusionClient() {
 
         {status === 'success' && combinedPdfUrl && (
           <Button asChild className="w-full bg-green-500 hover:bg-green-600 text-white">
-            <a href={combinedPdfUrl} download="acta-fusionada.pdf">
+            <a href={combinedPdfUrl} download={extractedCurp ? `${extractedCurp}.pdf` : 'acta-fusionada.pdf'}>
               <Download className="mr-2 h-4 w-4" /> Descargar PDF Fusionado
             </a>
           </Button>
