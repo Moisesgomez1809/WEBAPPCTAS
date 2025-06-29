@@ -4,25 +4,28 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, ArrowRight, BarChart3, Frame, Combine } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, BarChart3, Frame, Combine, Stamp } from 'lucide-react';
 import { extractIssuingEntity, getReversePdfAsDataUri, extractDocumentDetails } from '../actions';
 import { mergePdfsClient, modifyReversePdfClient, framePdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ReverseSideEntry } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
-type LoadingStep = 'idle' | 'finding_frame' | 'framing' | 'extracting' | 'matching' | 'modifying' | 'merging' | 'done';
+type LoadingStep = 'idle' | 'finding_frame' | 'framing' | 'extracting' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'done';
 
 const loadingMessages: Record<LoadingStep, string> = {
   idle: 'Esperando para empezar...',
   finding_frame: 'Buscando el marco en tu base de datos...',
-  framing: 'Enmarcando el acta de nacimiento...',
-  extracting: 'Identificando la entidad emisora del acta...',
+  framing: 'Aplicando el marco al acta...',
+  extracting: 'Analizando documento para identificar la entidad emisora...',
+  extractingDetails: 'Extrayendo CURP e Identificador Electrónico...',
   matching: 'Buscando el reverso correcto...',
   modifying: 'Creando el nuevo código QR para el reverso...',
-  merging: 'Fusionando el marco y el reverso en un solo PDF...',
+  merging: 'Fusionando el acta enmarcada con el reverso...',
   done: '¡Tu documento enmarcado está listo!',
 };
 
@@ -47,14 +50,18 @@ function findReverseSide(entity: string, db: ReverseSideEntry[]): ReverseSideEnt
 
 export default function FrameClient() {
   const [originalFile, setOriginalFile] = useState<File | null>(null);
-  const [pdfDataUri, setPdfDataUri] = useState<string | null>(null); // data-uri for processing
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null); // object-url for iframe
-  const [finalPdfUrl, setFinalPdfUrl] = useState<string | null>(null); // data-uri for download
+  const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [finalPdfUrl, setFinalPdfUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>('idle');
   const [loadingStep, setLoadingStep] = useState<LoadingStep>('idle');
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [db, setDb] = useState<ReverseSideEntry[]>([]);
+  const [manualEntity, setManualEntity] = useState<string>("");
+  const [availableStates, setAvailableStates] = useState<string[]>([]);
+  const [entity, setEntity] = useState<string | null>(null);
+  const [extractedCurp, setExtractedCurp] = useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -62,7 +69,13 @@ export default function FrameClient() {
     try {
       const dbString = localStorage.getItem('reverse-sides-db');
       if (dbString) {
-        setDb(JSON.parse(dbString));
+        const parsedDb = JSON.parse(dbString) as ReverseSideEntry[];
+        setDb(parsedDb);
+        const states = parsedDb
+          .map(e => e['entidad de registro'])
+          .filter(name => normalizeString(name) !== 'marcoactas')
+          .sort();
+        setAvailableStates(states);
       } else {
         toast({ title: 'Base de datos no encontrada', description: 'Redirigiendo a la página de carga.', variant: 'destructive' });
         router.replace('/upload');
@@ -84,6 +97,9 @@ export default function FrameClient() {
     setStatus('idle');
     setLoadingStep('idle');
     setError(null);
+    setEntity(null);
+    setManualEntity("");
+    setExtractedCurp(null);
   }, [previewUrl]);
 
   const handleFileChange = (file: File | null) => {
@@ -115,41 +131,54 @@ export default function FrameClient() {
     }
   };
 
-  const processFraming = async () => {
+  const processFramingAndFusion = async (entityToUse: string, isAuto: boolean) => {
     if (!pdfDataUri) return;
 
     setStatus('loading');
-    setLoadingStep('finding_frame');
     setError(null);
+    setEntity(null);
+    setExtractedCurp(null);
+    setLoadingStep('finding_frame');
 
     try {
-      const frameEntry = db.find(e => normalizeString(e['entidad de registro']) === 'marcoactas');
-      if (!frameEntry) throw new Error('No se encontró "MARCO ACTAS" en tu base de datos.');
-      
-      const framePdfUri = await getReversePdfAsDataUri(frameEntry['link del reverso para descarga directa']);
-
-      setLoadingStep('framing');
-      const framedPdfPromise = framePdfClient(pdfDataUri, framePdfUri);
+      const framingPromise = (async () => {
+        const frameEntry = db.find(e => normalizeString(e['entidad de registro']) === 'marcoactas');
+        if (!frameEntry) throw new Error('No se encontró "MARCO ACTAS" en tu base de datos.');
+        const framePdfUri = await getReversePdfAsDataUri(frameEntry['link del reverso para descarga directa']);
+        setLoadingStep('framing');
+        return framePdfClient(pdfDataUri, framePdfUri);
+      })();
 
       const reverseSidePromise = (async () => {
-        setLoadingStep('extracting');
-        const { issuingEntity } = await extractIssuingEntity({ pdfDataUri });
+        setLoadingStep('extractingDetails');
         const { curp, electronicId } = await extractDocumentDetails({ pdfDataUri });
         if (!curp || !electronicId) throw new Error("No se pudo extraer la CURP o el Identificador Electrónico.");
 
+        let finalEntity: string;
+        if (isAuto) {
+          setLoadingStep('extracting');
+          const { issuingEntity } = await extractIssuingEntity({ pdfDataUri });
+          finalEntity = issuingEntity;
+        } else {
+          finalEntity = entityToUse;
+        }
+        
+        setEntity(finalEntity);
+        
         setLoadingStep('matching');
-        const reverseSideEntry = findReverseSide(issuingEntity, db);
-        if (!reverseSideEntry) throw new Error(`No se pudo encontrar un reverso para "${issuingEntity}".`);
-
+        const reverseSideEntry = findReverseSide(finalEntity, db);
+        if (!reverseSideEntry) throw new Error(`No se pudo encontrar un reverso para "${finalEntity}".`);
         const reversePdfDataUri = await getReversePdfAsDataUri(reverseSideEntry['link del reverso para descarga directa']);
 
         setLoadingStep('modifying');
         const modifiedReversePdfUri = await modifyReversePdfClient(reversePdfDataUri, curp, electronicId);
+        
         return { modifiedReversePdfUri, curp };
       })();
 
-      const [framedPdf, { modifiedReversePdfUri, curp }] = await Promise.all([framedPdfPromise, reverseSidePromise]);
-      
+      const [framedPdf, { modifiedReversePdfUri, curp }] = await Promise.all([framingPromise, reverseSidePromise]);
+      setExtractedCurp(curp);
+
       setLoadingStep('merging');
       const mergedPdf = await mergePdfsClient(framedPdf, modifiedReversePdfUri);
 
@@ -207,22 +236,49 @@ export default function FrameClient() {
           <div className="flex flex-col items-center justify-center space-y-4 p-8 bg-background rounded-lg">
             <Loader2 className="w-12 h-12 text-primary animate-spin" />
             <p className="text-lg font-medium text-foreground">{loadingMessages[loadingStep]}</p>
+            {entity && <p className="text-sm text-muted-foreground">Entidad: {entity}</p>}
           </div>
         ) : (
-          <Button onClick={processFraming} className="w-full">
-            <Frame className="mr-2 h-4 w-4" /> Enmarcar y Fusionar con Reverso
-          </Button>
+          <Tabs defaultValue="automatic" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="automatic">Automático (IA)</TabsTrigger>
+              <TabsTrigger value="manual">Selección Manual</TabsTrigger>
+            </TabsList>
+            <TabsContent value="automatic" className="pt-4">
+               <p className="text-sm text-muted-foreground mb-4">La IA analizará tu documento para encontrar el marco y el reverso correctos.</p>
+               <Button onClick={() => processFramingAndFusion('', true)} className="w-full">
+                <Sparkles className="mr-2 h-4 w-4" /> Enmarcar y Fusionar con IA
+              </Button>
+            </TabsContent>
+            <TabsContent value="manual" className="pt-4 space-y-4">
+              <p className="text-sm text-muted-foreground">Si la IA falla, selecciona manualmente el estado para encontrar el reverso.</p>
+               <Select onValueChange={setManualEntity} value={manualEntity}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un estado..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableStates.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button onClick={() => processFramingAndFusion(manualEntity, false)} disabled={!manualEntity} className="w-full">
+                <Frame className="mr-2 h-4 w-4" /> Enmarcar y Fusionar con Estado Seleccionado
+              </Button>
+            </TabsContent>
+          </Tabs>
         )}
         {status === 'success' && finalPdfUrl && (
           <Button asChild className="w-full bg-green-500 hover:bg-green-600 text-white">
-            <a href={finalPdfUrl} download={`${originalFile?.name.replace('.pdf', '')}-enmarcado.pdf`}>
+            <a href={finalPdfUrl} download={extractedCurp ? `${extractedCurp}-enmarcado.pdf` : 'acta-enmarcada.pdf'}>
               <Download className="mr-2 h-4 w-4" /> Descargar PDF Final
             </a>
           </Button>
         )}
       </CardContent>
-      <CardFooter>
-        <Button onClick={handleReset} variant="outline" className="w-full">
+      <CardFooter className="flex-col sm:flex-row gap-2 justify-between items-center">
+        {entity && status !== 'loading' && (
+          <p className="text-sm text-muted-foreground">Entidad Identificada: <strong>{entity}</strong></p>
+        )}
+        <Button onClick={handleReset} variant="outline" className="w-full sm:w-auto mt-2 sm:mt-0 ml-auto">
           <RefreshCcw className="mr-2 h-4 w-4" /> Empezar de Nuevo
         </Button>
       </CardFooter>
@@ -236,7 +292,7 @@ export default function FrameClient() {
         <p className="text-muted-foreground mt-2 text-lg">Sube un acta para enmarcarla y añadirle su reverso oficial.</p>
         <div className="mt-6 flex justify-center gap-4 flex-wrap">
           <Link href="/"><Button variant="outline"><Combine className="mr-2 h-4 w-4" />Ir a Acta Fusion</Button></Link>
-          <Link href="/folio"><Button variant="outline"><Sparkles className="mr-2 h-4 w-4" />Ir a Foliar</Button></Link>
+          <Link href="/folio"><Button variant="outline"><Stamp className="mr-2 h-4 w-4" />Ir a Foliar</Button></Link>
           <Link href="/dashboard"><Button variant="secondary"><BarChart3 className="mr-2 h-4 w-4" />Ver Dashboard</Button></Link>
         </div>
       </header>
