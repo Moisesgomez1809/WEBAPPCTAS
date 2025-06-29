@@ -6,25 +6,23 @@ import { Loader2 } from 'lucide-react';
 
 export default function DatabaseGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [isClient, setIsClient] = useState(false);
+  // Use three states: 'checking' while waiting for client-side check, 'valid' if DB exists, 'invalid' if not.
+  const [status, setStatus] = useState<'checking' | 'valid' | 'invalid'>('checking');
 
   useEffect(() => {
-    // This effect ensures we are on the client.
-    setIsClient(true);
-  }, []);
+    // This logic now runs only on the client, after the initial render is complete.
+    const db = localStorage.getItem('reverse-sides-db');
+    if (db) {
+      setStatus('valid');
+    } else {
+      setStatus('invalid');
+    }
+  }, []); // The empty dependency array ensures this runs only once on mount.
 
-  // Return null on the server and on the first client-side render.
-  // This ensures there's no mismatch between server and client HTML.
-  if (!isClient) {
-    return null;
-  }
-  
-  // Now that we're safely on the client, we can check localStorage.
-  const db = localStorage.getItem('reverse-sides-db');
-  
-  if (!db) {
-    // If there's no database, redirect and show a loader.
+  if (status === 'invalid') {
+    // If the database isn't found, redirect to the upload page.
     router.replace('/upload');
+    // Show a loader while the redirect is happening.
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center space-y-4">
@@ -35,6 +33,19 @@ export default function DatabaseGuard({ children }: { children: React.ReactNode 
     );
   }
 
-  // If the database exists, render the actual page content.
+  if (status === 'checking') {
+    // This is the default state that will be rendered on the server and on the initial client render.
+    // This guarantees that the server and client HTML match, preventing a hydration error.
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="text-muted-foreground">Verificando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If status is 'valid', we can safely render the page content.
   return <>{children}</>;
 }
