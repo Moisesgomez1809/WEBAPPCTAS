@@ -249,11 +249,24 @@ export default function FrameClient() {
           <Card className="h-full flex flex-col">
             <CardHeader>
               <CardTitle>Vista Previa del PDF</CardTitle>
-              <CardDescription>{finalPdfUrl ? 'Tu documento enmarcado está listo.' : (previewUrl ? 'Vista previa de tu documento.' : 'Sube un archivo para ver la vista previa.')}</CardDescription>
+                <CardDescription>
+                    {status === 'loading'
+                    ? 'Procesando tu documento...'
+                    : finalPdfUrl
+                    ? 'Tu documento enmarcado está listo.'
+                    : previewUrl
+                    ? 'Vista previa de tu documento.'
+                    : 'Sube un archivo para ver la vista previa.'}
+                </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
               <div className="w-full h-full bg-secondary rounded-lg flex items-center justify-center">
-                {previewUrl ? (
+                {status === 'loading' ? (
+                    <div className="flex flex-col items-center justify-center space-y-4 p-8 bg-background rounded-lg text-center">
+                        <Loader2 className="w-16 h-16 text-primary animate-spin" />
+                        <p className="text-lg font-medium text-foreground">{loadingMessages[loadingStep]}</p>
+                    </div>
+                ) : previewUrl ? (
                   <object data={previewUrl} type="application/pdf" className="w-full h-full rounded-lg">
                     <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-8">
                       <AlertCircle className="w-16 h-16 mx-auto mb-4 text-destructive" />

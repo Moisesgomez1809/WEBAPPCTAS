@@ -165,7 +165,12 @@ export async function framePdfClient(originalPdfUri: string, framePdfUri: string
         const originalDoc = await PDFDocument.load(originalPdfBytes);
 
         const framePage = frameDoc.getPage(0);
-        const [originalPageToEmbed] = await frameDoc.copyPages(originalDoc, [0]);
+        
+        // Get the first page of the original document
+        const originalPage = originalDoc.getPage(0);
+
+        // Embed the original page into the frame document
+        const embeddedPage = await frameDoc.embedPage(originalPage);
 
         const { width: frameWidth, height: frameHeight } = framePage.getSize();
         
@@ -175,7 +180,8 @@ export async function framePdfClient(originalPdfUri: string, framePdfUri: string
         const embedWidth = frameWidth - (marginX * 2);
         const embedHeight = frameHeight - (marginY * 2) - 50;
 
-        framePage.drawPage(originalPageToEmbed, {
+        // Draw the embedded page onto the frame page
+        framePage.drawPage(embeddedPage, {
             x: marginX,
             y: marginY,
             width: embedWidth,
