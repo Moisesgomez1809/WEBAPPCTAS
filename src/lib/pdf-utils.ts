@@ -216,7 +216,7 @@ export async function modifyMetadataAndResizeClient(pdfUri: string): Promise<str
         newDoc.setKeywords([]);
         newDoc.setCreator('');
         newDoc.setProducer('Oracle XML Publisher 5.6.2');
-        const fixedDate = new Date('2000-01-01T00:00:00Z');
+        const fixedDate = new Date('');
         newDoc.setCreationDate(fixedDate);
         newDoc.setModificationDate(fixedDate);
 
