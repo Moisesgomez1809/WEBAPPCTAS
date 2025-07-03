@@ -137,12 +137,12 @@ export default function ActaFusionClient() {
                 </Card>
                 <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Metadata Modificada</CardTitle>
+                        <CardTitle className="text-sm font-medium">RFCS Metadata</CardTitle>
                         <FileCog className="h-5 w-5 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-4xl font-bold">{stats.metadata}</div>
-                        <p className="text-xs text-muted-foreground pt-1">Documentos con metadata limpia</p>
+                        <p className="text-xs text-muted-foreground pt-1">Rfcs con metadata limpia</p>
                     </CardContent>
                 </Card>
             </div>
