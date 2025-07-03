@@ -229,7 +229,7 @@ export default function MetadataClient() {
           Limpia y estandariza la metadata de tu PDF y ajústalo a tamaño carta.
         </p>
         <div className="mt-6 flex justify-center gap-4 flex-wrap">
-            <Link href="/">
+            <Link href="/dashboard">
                 <Button variant="outline">
                     <Combine className="mr-2 h-4 w-4" />
                     Ir a Acta Fusion
@@ -247,7 +247,7 @@ export default function MetadataClient() {
                     Foliar Documento
                 </Button>
             </Link>
-            <Link href="/dashboard">
+            <Link href="/">
                 <Button variant="secondary">
                     Ver Dashboard
                     <BarChart3 className="ml-2 h-4 w-4" />

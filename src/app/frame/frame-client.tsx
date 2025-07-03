@@ -325,10 +325,10 @@ export default function FrameClient() {
         <h1 className="text-5xl font-bold text-primary font-headline">Enmarcar Acta</h1>
         <p className="text-muted-foreground mt-2 text-lg">Sube un acta para enmarcarla y añadirle su reverso oficial.</p>
         <div className="mt-6 flex justify-center gap-4 flex-wrap">
-          <Link href="/"><Button variant="outline"><Combine className="mr-2 h-4 w-4" />Ir a Acta Fusion</Button></Link>
+          <Link href="/dashboard"><Button variant="outline"><Combine className="mr-2 h-4 w-4" />Ir a Acta Fusion</Button></Link>
           <Link href="/folio"><Button variant="outline"><Stamp className="mr-2 h-4 w-4" />Ir a Foliar</Button></Link>
           <Link href="/metadata"><Button variant="outline"><FileCog className="mr-2 h-4 w-4"/>Modificar Metadata</Button></Link>
-          <Link href="/dashboard"><Button variant="secondary"><BarChart3 className="mr-2 h-4 w-4" />Ver Dashboard</Button></Link>
+          <Link href="/"><Button variant="secondary"><BarChart3 className="mr-2 h-4 w-4" />Ver Dashboard</Button></Link>
         </div>
       </header>
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8">

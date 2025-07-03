@@ -1,211 +1,435 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, Frame, Stamp, Wallet, BarChart3, FileCog } from 'lucide-react';
+import { extractIssuingEntity, getReversePdfAsDataUri, extractDocumentDetails } from '../actions';
+import { mergePdfsClient, modifyReversePdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { ReverseSideEntry } from '@/lib/types';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import UtilitiesCalculator from '@/components/utilities-calculator';
 
-interface Stats {
-  total: number;
-  fusions: number;
-  folios: number;
-  frames: number;
-  metadata: number;
-  profit: number;
+type Status = 'idle' | 'loading' | 'success' | 'error';
+type LoadingStep = 'idle' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'done';
+
+const loadingMessages: Record<LoadingStep, string> = {
+  idle: 'Esperando para empezar...',
+  extractingDetails: 'Extrayendo CURP e Identificador Electrónico...',
+  matching: 'Buscando el reverso correcto en tu base de datos...',
+  modifying: 'Reemplazando el código QR en el reverso...',
+  merging: 'Fusionando los documentos en un solo PDF...',
+  done: '¡Tu documento está listo!',
+};
+
+function normalizeString(str: string): string {
+    return str
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, '');
+}
+
+function findReverseSide(entity: string, db: ReverseSideEntry[]): ReverseSideEntry | null {
+    const normalizedEntity = normalizeString(entity);
+
+    // Handle special cases from old prompt
+    if (normalizedEntity.includes('distritofederal') || normalizedEntity.includes('ciudadmexico')) {
+        const df = db.find(e => normalizeString(e['entidad de registro']).includes('distritofederal'));
+        if (df) return df;
+    }
+    if (normalizedEntity.includes('mexico') && !normalizedEntity.includes('ciudadmexico') && !normalizedEntity.includes('nuevoleon')) {
+        const edoMex = db.find(e => normalizeString(e['entidad de registro']) === 'mexico' || normalizeString(e['entidad de registro']) === 'estadodemexico');
+        if (edoMex) return edoMex;
+    }
+
+    // Exact match
+    let match = db.find(e => normalizeString(e['entidad de registro']) === normalizedEntity);
+    if (match) return match;
+
+    // Partial match
+    match = db.find(e => normalizedEntity.includes(normalizeString(e['entidad de registro'])));
+    if (match) return match;
+
+    return null;
 }
 
 export default function DashboardClient() {
-  const [stats, setStats] = useState<Stats>({ total: 0, fusions: 0, folios: 0, frames: 0, metadata: 0, profit: 0 });
-  const router = useRouter();
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
+  const [originalPdfUrl, setOriginalPdfUrl] = useState<string | null>(null); // data-uri for processing
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null); // object-url for iframe
+  const [combinedPdfUrl, setCombinedPdfUrl] = useState<string | null>(null); // data-uri for download
+  const [status, setStatus] = useState<Status>('idle');
+  const [loadingStep, setLoadingStep] = useState<LoadingStep>('idle');
+  const [error, setError] = useState<string | null>(null);
+  const [entity, setEntity] = useState<string | null>(null);
+  const [manualEntity, setManualEntity] = useState<string>("");
+  const [isDragging, setIsDragging] = useState(false);
+  const [db, setDb] = useState<ReverseSideEntry[]>([]);
+  const [availableStates, setAvailableStates] = useState<string[]>([]);
+  const [extractedCurp, setExtractedCurp] = useState<string | null>(null);
+  
+  const [providerCost, setProviderCost] = useState('');
+  const [clientCost, setClientCost] = useState('');
+  const [profit, setProfit] = useState(0);
+
   const { toast } = useToast();
+  const router = useRouter();
+
 
   useEffect(() => {
-    const fusions = parseInt(localStorage.getItem('fusionCount') || '0', 10);
-    const folios = parseInt(localStorage.getItem('folioCount') || '0', 10);
-    const frames = parseInt(localStorage.getItem('frameCount') || '0', 10);
-    const metadata = parseInt(localStorage.getItem('metadataCount') || '0', 10);
-    const profit = parseFloat(localStorage.getItem('totalProfit') || '0');
-    setStats({
-      total: fusions + folios + frames + metadata,
-      fusions,
-      folios,
-      frames,
-      metadata,
-      profit,
-    });
-  }, []);
-
-  const handleResetStats = () => {
+    // This runs on client, after the guard has passed.
     try {
-        localStorage.setItem('fusionCount', '0');
-        localStorage.setItem('folioCount', '0');
-        localStorage.setItem('frameCount', '0');
-        localStorage.setItem('metadataCount', '0');
-        localStorage.setItem('totalProfit', '0');
-        setStats({ total: 0, fusions: 0, folios: 0, frames: 0, metadata: 0, profit: 0 });
-        toast({
-            title: "Estadísticas Reiniciadas",
-            description: "Los contadores han sido puestos a cero.",
-        });
+      const dbString = localStorage.getItem('reverse-sides-db');
+      if (dbString) {
+        const parsedDb = JSON.parse(dbString) as ReverseSideEntry[];
+        setDb(parsedDb);
+        const states = parsedDb.map(e => e['entidad de registro']).sort();
+        setAvailableStates(states);
+      } else {
+        // This should not happen due to the guard, but as a fallback.
+        toast({ title: 'Base de datos no encontrada', description: 'Redirigiendo a la página de carga.', variant: 'destructive' });
+        router.replace('/upload');
+      }
     } catch (e) {
-        console.error("Failed to reset stats", e);
+      console.error("Failed to load database from localStorage", e);
+      toast({ title: 'Base de datos corrupta', description: 'Por favor, carga el archivo de la base de datos de nuevo.', variant: 'destructive' });
+      localStorage.removeItem('reverse-sides-db');
+      router.replace('/upload');
+    }
+  }, [router, toast]);
+
+  useEffect(() => {
+    const pCost = parseFloat(providerCost) || 0;
+    const cCost = parseFloat(clientCost) || 0;
+    setProfit(cCost - pCost);
+  }, [providerCost, clientCost]);
+
+
+  const handleReset = useCallback(() => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setOriginalFile(null);
+    setOriginalPdfUrl(null);
+    setPreviewUrl(null);
+    setCombinedPdfUrl(null);
+    setStatus('idle');
+    setLoadingStep('idle');
+    setError(null);
+    setEntity(null);
+    setManualEntity("");
+    setExtractedCurp(null);
+    setProviderCost('');
+    setClientCost('');
+  }, [previewUrl]);
+
+  const handleFileChange = (file: File | null) => {
+    if (file && file.type === 'application/pdf') {
+      handleReset();
+      setOriginalFile(file);
+      
+      const objectUrl = URL.createObjectURL(file);
+      setPreviewUrl(objectUrl);
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setOriginalPdfUrl(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+      setError(null);
+    } else {
+      setError('Por favor, sube un archivo PDF válido.');
+      toast({
+        title: "Tipo de Archivo Inválido",
+        description: "Por favor, sube un archivo PDF válido.",
+        variant: "destructive",
+      })
+    }
+  };
+  
+  const setMergedPreview = async (mergedDataUri: string) => {
+    try {
+        const res = await fetch(mergedDataUri);
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+        }
+
+        setPreviewUrl(objectUrl);
+    } catch (e) {
+        console.error("Failed to create preview URL for merged PDF", e);
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+        }
+        setPreviewUrl(mergedDataUri);
+    }
+  };
+  
+  const handleDownloadAndSave = () => {
+    if (!combinedPdfUrl) return;
+
+    try {
+      if (profit > 0) {
+        const currentProfit = parseFloat(localStorage.getItem('totalProfit') || '0');
+        const newTotalProfit = currentProfit + profit;
+        localStorage.setItem('totalProfit', newTotalProfit.toString());
+         toast({
+            title: "Utilidad Guardada",
+            description: `Se añadieron ${new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(profit)} a tus ganancias.`,
+        });
+      }
+
+      const currentCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
+      localStorage.setItem('fusionCount', (currentCount + 1).toString());
+
+      const link = document.createElement('a');
+      link.href = combinedPdfUrl;
+      link.download = extractedCurp ? `${extractedCurp}.pdf` : 'acta-fusionada.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e) {
+        console.error("Failed to save data or download", e);
         toast({
             title: "Error",
-            description: "No se pudieron reiniciar las estadísticas.",
-            variant: "destructive"
+            description: "No se pudo guardar la utilidad o descargar el archivo.",
+            variant: "destructive",
         });
     }
   };
 
+  const processFusion = async (entityToUse: string) => {
+    if (!originalPdfUrl || !entityToUse) {
+       toast({
+        title: "Selección Requerida",
+        description: "Por favor, selecciona un estado antes de fusionar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setStatus('loading');
+    setLoadingStep('extractingDetails');
+    setError(null);
+    setEntity(null);
+    setExtractedCurp(null);
+
+    try {
+      const { curp, electronicId } = await extractDocumentDetails({ pdfDataUri: originalPdfUrl });
+      
+      if (!curp || !electronicId) {
+          throw new Error("No se pudo extraer la CURP o el Identificador Electrónico. Asegúrate de que el documento sea claro.");
+      }
+      
+      setExtractedCurp(curp);
+      setEntity(entityToUse);
+      
+      setLoadingStep('matching');
+      
+      const reverseSideEntry = findReverseSide(entityToUse, db);
+      if (!reverseSideEntry) {
+          throw new Error(`No se pudo encontrar un reverso para "${entityToUse}" en tu base de datos.`);
+      }
+
+      const reverseSideUrl = reverseSideEntry['link del reverso para descarga directa'];
+      const reversePdfDataUri = await getReversePdfAsDataUri(reverseSideUrl);
+
+      setLoadingStep('modifying');
+      const modifiedReversePdfUri = await modifyReversePdfClient(reversePdfDataUri, curp, electronicId);
+
+      setLoadingStep('merging');
+      const mergedPdf = await mergePdfsClient(originalPdfUrl, modifiedReversePdfUri);
+
+      setCombinedPdfUrl(mergedPdf);
+      await setMergedPreview(mergedPdf);
+
+      setLoadingStep('done');
+      setStatus('success');
+      toast({
+        title: "¡Éxito!",
+        description: "Tu PDF ha sido creado con el nuevo código QR.",
+      });
+
+    } catch (e: any) {
+      console.error(e);
+      const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
+      setError(`El proceso falló: ${errorMessage}`);
+      setStatus('error');
+      toast({
+        title: "El Proceso Falló",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); };
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); };
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); };
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); e.stopPropagation(); setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileChange(e.dataTransfer.files[0]);
+      e.dataTransfer.clearData();
+    }
+  };
+
+  const renderDropzone = () => (
+     <div
+      onDrop={handleDrop} onDragOver={handleDragOver} onDragEnter={handleDragEnter} onDragLeave={handleDragLeave}
+      className={`relative flex flex-col items-center justify-center w-full p-10 border-2 border-dashed rounded-lg cursor-pointer transition-colors duration-300 ease-in-out ${ isDragging ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/70 hover:bg-secondary'}`}
+      onClick={() => document.getElementById('file-upload')?.click()}
+    >
+      <FileUp className="w-16 h-16 text-primary mb-4" />
+      <h3 className="text-xl font-semibold text-foreground">Arrastra y suelta tu acta de nacimiento</h3>
+      <p className="text-muted-foreground mt-2">o haz clic para seleccionar un archivo PDF</p>
+      <input id="file-upload" type="file" className="hidden" accept="application/pdf" onChange={(e) => handleFileChange(e.target.files ? e.target.files[0] : null)} />
+    </div>
+  );
+
+  const renderProcessingState = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Información del Archivo</CardTitle>
+        <CardDescription>{originalFile?.name}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {status === 'loading' ? (
+          <div className="flex flex-col items-center justify-center space-y-4 p-8 bg-background rounded-lg">
+            <Loader2 className="w-12 h-12 text-primary animate-spin" />
+            <p className="text-lg font-medium text-foreground">{loadingMessages[loadingStep]}</p>
+            {entity && <p className="text-sm text-muted-foreground">Procesando para: {entity}</p>}
+          </div>
+        ) : (
+          <div className="pt-4 space-y-4">
+              <p className="text-sm text-muted-foreground">Selecciona el estado emisor del acta de nacimiento para encontrar el reverso correcto.</p>
+               <Select onValueChange={setManualEntity} value={manualEntity}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un estado..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableStates.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button onClick={() => processFusion(manualEntity)} disabled={!manualEntity} className="w-full">
+                <Sparkles className="mr-2 h-4 w-4" /> Fusionar Documentos
+              </Button>
+            </div>
+        )}
+
+        {status === 'success' && combinedPdfUrl && (
+          <Button onClick={handleDownloadAndSave} className="w-full bg-green-500 hover:bg-green-600 text-white">
+            <Download className="mr-2 h-4 w-4" /> Descargar PDF Fusionado
+          </Button>
+        )}
+        
+        <UtilitiesCalculator
+          providerCost={providerCost}
+          clientCost={clientCost}
+          profit={profit}
+          onProviderCostChange={setProviderCost}
+          onClientCostChange={setClientCost}
+        />
+      </CardContent>
+      <CardFooter className="flex-col sm:flex-row gap-2 justify-between items-center">
+         {entity && status !== 'loading' && (
+            <p className="text-sm text-muted-foreground">Entidad Seleccionada: <strong>{entity}</strong></p>
+         )}
+         <Button onClick={handleReset} variant="outline" className="w-full sm:w-auto mt-2 sm:mt-0 ml-auto">
+            <RefreshCcw className="mr-2 h-4 w-4" /> Empezar de Nuevo
+          </Button>
+      </CardFooter>
+    </Card>
+  );
+
   return (
     <main className="container mx-auto p-4 sm:p-6 lg:p-8 min-h-screen flex flex-col items-center">
-        <header className="w-full text-center mb-10">
-            <h1 className="text-5xl font-bold text-primary font-headline">Dashboard de Actividad</h1>
-            <p className="text-muted-foreground mt-2 text-lg">
-            Un resumen de todos los documentos que has procesado.
-            </p>
-        </header>
-
-        <div className="w-full max-w-5xl space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Trámites Totales</CardTitle>
-                        <BarChart3 className="h-5 w-5 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-4xl font-bold">{stats.total}</div>
-                        <p className="text-xs text-muted-foreground pt-1">Suma de todos los trámites</p>
-                    </CardContent>
-                </Card>
-                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Utilidad Total</CardTitle>
-                        <Wallet className="h-5 w-5 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-4xl font-bold text-green-600">
-                            {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(stats.profit)}
-                        </div>
-                        <p className="text-xs text-muted-foreground pt-1">Ganancia acumulada de todos los trámites</p>
-                    </CardContent>
-                </Card>
-                 <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Actas Fusionadas</CardTitle>
-                        <Combine className="h-5 w-5 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-4xl font-bold">{stats.fusions}</div>
-                         <p className="text-xs text-muted-foreground pt-1">Documentos con reverso añadido</p>
-                    </CardContent>
-                </Card>
-                 <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Documentos Foliados</CardTitle>
-                        <Stamp className="h-5 w-5 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-4xl font-bold">{stats.folios}</div>
-                        <p className="text-xs text-muted-foreground pt-1">Documentos con folio único</p>
-                    </CardContent>
-                </Card>
-                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Actas Enmarcadas</CardTitle>
-                        <Frame className="h-5 w-5 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-4xl font-bold">{stats.frames}</div>
-                        <p className="text-xs text-muted-foreground pt-1">Documentos con marco añadido</p>
-                    </CardContent>
-                </Card>
-                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Metadata Modificada</CardTitle>
-                        <FileCog className="h-5 w-5 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-4xl font-bold">{stats.metadata}</div>
-                        <p className="text-xs text-muted-foreground pt-1">Documentos con metadata limpia</p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Acciones Rápidas</CardTitle>
-                    <CardDescription>Gestiona tu aplicación y tus datos desde aquí.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                     <Link href="/" className="w-full">
-                        <Button variant="outline" className="w-full h-12">
-                            <Combine className="mr-2 h-4 w-4" />
-                            Ir a Acta Fusion
-                        </Button>
-                    </Link>
-                    <Link href="/frame" className="w-full">
-                        <Button variant="outline" className="w-full h-12">
-                            <Frame className="mr-2 h-4 w-4" />
-                            Ir a Enmarcar
-                        </Button>
-                    </Link>
-                    <Link href="/folio" className="w-full">
-                        <Button variant="outline" className="w-full h-12">
-                            <Stamp className="mr-2 h-4 w-4" />
-                            Ir a Foliar
-                        </Button>
-                    </Link>
-                    <Link href="/metadata" className="w-full">
-                        <Button variant="outline" className="w-full h-12">
-                            <FileCog className="mr-2 h-4 w-4" />
-                            Modificar Metadata
-                        </Button>
-                    </Link>
-                    <Link href="/upload" className="w-full">
-                        <Button variant="outline" className="w-full h-12">
-                            <Upload className="mr-2 h-4 w-4" />
-                            Subir nueva Base de Datos
-                        </Button>
-                    </Link>
-                     <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                             <Button variant="destructive" className="w-full h-12">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Reiniciar Estadísticas
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>¿Estás absolutely seguro?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Esta acción no se puede deshacer. Esto pondrá a cero todos los contadores de trámites y las ganancias.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleResetStats}>Continuar</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </CardContent>
-            </Card>
+      <header className="text-center mb-10">
+        <h1 className="text-5xl font-bold text-primary font-headline">Acta Fusion</h1>
+        <p className="text-muted-foreground mt-2 text-lg">
+          Combina fácilmente tu acta de nacimiento con su reverso oficial.
+        </p>
+         <div className="mt-6 flex justify-center gap-4 flex-wrap">
+            <Link href="/frame">
+                <Button variant="outline">
+                    Enmarcar Acta
+                    <Frame className="ml-2 h-4 w-4" />
+                </Button>
+            </Link>
+            <Link href="/folio">
+                <Button variant="outline">
+                    Foliar Documento
+                    <Stamp className="ml-2 h-4 w-4" />
+                </Button>
+            </Link>
+            <Link href="/metadata">
+              <Button variant="outline">
+                  Modificar Metadata
+                  <FileCog className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+             <Link href="/">
+                <Button variant="secondary">
+                    Ver Dashboard
+                    <BarChart3 className="ml-2 h-4 w-4" />
+                </Button>
+            </Link>
         </div>
+      </header>
+      
+      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="flex flex-col space-y-8">
+            {originalFile ? renderProcessingState() : renderDropzone()}
+            {error && (
+            <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+            </Alert>
+            )}
+        </div>
+        
+        <div className="lg:h-[70vh]">
+          <Card className="h-full flex flex-col">
+            <CardHeader>
+              <CardTitle>Vista Previa del PDF</CardTitle>
+              <CardDescription>
+                {combinedPdfUrl ? 'Tu documento fusionado está listo abajo.' : (previewUrl ? 'Vista previa de tu documento cargado.' : 'Sube un archivo para ver la vista previa.')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+              <div className="w-full h-full bg-secondary rounded-lg flex items-center justify-center">
+                {previewUrl ? (
+                   <object
+                    data={previewUrl}
+                    type="application/pdf"
+                    className="w-full h-full rounded-lg"
+                  >
+                     <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-8">
+                        <AlertCircle className="w-16 h-16 mx-auto mb-4 text-destructive"/>
+                        <p className="font-semibold">No se puede mostrar la vista previa del PDF.</p>
+                        <p className="text-sm">Es posible que tu navegador no admita vistas previas incrustadas. Aún puedes procesar y descargar el archivo.</p>
+                      </div>
+                  </object>
+                ) : (
+                  <div className="text-center text-muted-foreground p-8">
+                    <FileCheck2 className="w-20 h-20 mx-auto mb-4"/>
+                    <p>La vista previa aparecerá aquí</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </main>
   );
 }

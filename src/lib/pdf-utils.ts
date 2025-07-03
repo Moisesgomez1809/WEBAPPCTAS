@@ -229,7 +229,7 @@ export async function modifyMetadataAndResizeClient(pdfUri: string): Promise<str
             
             // Calculate scale to fit and preserve aspect ratio, then increase it slightly.
             let scale = Math.min(letterSize[0] / origWidth, letterSize[1] / origHeight);
-            scale *= 1.03; // Make it 3% larger
+            scale *= 1.06; // Make it 3% larger
 
             const scaledWidth = origWidth * scale;
             const scaledHeight = origHeight * scale;

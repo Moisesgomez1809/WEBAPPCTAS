@@ -229,7 +229,7 @@ export default function FolioClient() {
           Añade un número de folio y código de barras únicos a la primera página de tu documento.
         </p>
         <div className="mt-6 flex justify-center gap-4 flex-wrap">
-            <Link href="/">
+            <Link href="/dashboard">
                 <Button variant="outline">
                     <Combine className="mr-2 h-4 w-4" />
                     Ir a Acta Fusion
@@ -247,7 +247,7 @@ export default function FolioClient() {
                   <FileCog className="ml-2 h-4 w-4" />
               </Button>
             </Link>
-            <Link href="/dashboard">
+            <Link href="/">
                 <Button variant="secondary">
                     Ver Dashboard
                     <BarChart3 className="ml-2 h-4 w-4" />
