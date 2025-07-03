@@ -5,19 +5,19 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, ArrowLeft, Stamp, BarChart3, Combine, Frame, FileCog } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, BarChart3, Combine, Frame, Stamp, FileCog } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
-import { addFolioToPdfClient } from '@/lib/pdf-utils';
+import { modifyMetadataAndResizeClient } from '@/lib/pdf-utils';
 import UtilitiesCalculator from '@/components/utilities-calculator';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
-export default function FolioClient() {
+export default function MetadataClient() {
   const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [pdfDataUri, setPdfDataUri] = useState<string | null>(null); // data-uri for processing
   const [previewUrl, setPreviewUrl] = useState<string | null>(null); // object-url for iframe
-  const [foliatedPdfUrl, setFoliatedPdfUrl] = useState<string | null>(null); // data-uri for download
+  const [modifiedPdfUrl, setModifiedPdfUrl] = useState<string | null>(null); // data-uri for download
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -40,7 +40,7 @@ export default function FolioClient() {
     setOriginalFile(null);
     setPdfDataUri(null);
     setPreviewUrl(null);
-    setFoliatedPdfUrl(null);
+    setModifiedPdfUrl(null);
     setStatus('idle');
     setError(null);
     setProviderCost('');
@@ -82,7 +82,7 @@ export default function FolioClient() {
         }
         setPreviewUrl(objectUrl);
     } catch (e) {
-        console.error("Failed to create preview URL for foliated PDF", e);
+        console.error("Failed to create preview URL for modified PDF", e);
         if (previewUrl) {
             URL.revokeObjectURL(previewUrl);
         }
@@ -91,7 +91,7 @@ export default function FolioClient() {
   };
 
   const handleDownloadAndSave = () => {
-    if (!foliatedPdfUrl) return;
+    if (!modifiedPdfUrl) return;
 
     try {
       if (profit > 0) {
@@ -104,12 +104,12 @@ export default function FolioClient() {
         });
       }
 
-      const currentCount = parseInt(localStorage.getItem('folioCount') || '0', 10);
-      localStorage.setItem('folioCount', (currentCount + 1).toString());
+      const currentCount = parseInt(localStorage.getItem('metadataCount') || '0', 10);
+      localStorage.setItem('metadataCount', (currentCount + 1).toString());
 
       const link = document.createElement('a');
-      link.href = foliatedPdfUrl;
-      link.download = `${originalFile?.name.replace('.pdf', '')}-foliado.pdf`;
+      link.href = modifiedPdfUrl;
+      link.download = `${originalFile?.name.replace('.pdf', '')}-modificado.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -124,22 +124,22 @@ export default function FolioClient() {
   };
 
 
-  const handleFoliate = async () => {
+  const handleProcessMetadata = async () => {
     if (!pdfDataUri) return;
 
     setStatus('loading');
     setError(null);
 
     try {
-      const foliatedPdf = await addFolioToPdfClient(pdfDataUri);
+      const modifiedPdf = await modifyMetadataAndResizeClient(pdfDataUri);
 
-      setFoliatedPdfUrl(foliatedPdf);
-      await setPreviewFromDataUri(foliatedPdf);
+      setModifiedPdfUrl(modifiedPdf);
+      await setPreviewFromDataUri(modifiedPdf);
 
       setStatus('success');
       toast({
         title: "¡Éxito!",
-        description: "Tu documento ha sido foliado exitosamente.",
+        description: "La metadata y el tamaño de tu documento han sido actualizados.",
       });
 
     } catch (e: any) {
@@ -174,7 +174,7 @@ export default function FolioClient() {
     >
       <FileUp className="w-16 h-16 text-primary mb-4" />
       <h3 className="text-xl font-semibold text-foreground">Arrastra y suelta tu documento</h3>
-      <p className="text-muted-foreground mt-2">o haz clic para seleccionar un archivo PDF para foliar</p>
+      <p className="text-muted-foreground mt-2">o haz clic para seleccionar un archivo PDF para editar su metadata</p>
       <input id="file-upload" type="file" className="hidden" accept="application/pdf" onChange={(e) => handleFileChange(e.target.files ? e.target.files[0] : null)} />
     </div>
   );
@@ -189,19 +189,19 @@ export default function FolioClient() {
         {status === 'loading' ? (
           <div className="flex flex-col items-center justify-center space-y-4 p-8 bg-background rounded-lg">
             <Loader2 className="w-12 h-12 text-primary animate-spin" />
-            <p className="text-lg font-medium text-foreground">Añadiendo folio a tu documento...</p>
+            <p className="text-lg font-medium text-foreground">Modificando metadata y tamaño...</p>
           </div>
         ) : (
           status !== 'success' && (
-            <Button onClick={handleFoliate} className="w-full">
-              <Stamp className="mr-2 h-4 w-4" /> Foliar Documento
+            <Button onClick={handleProcessMetadata} className="w-full">
+              <FileCog className="mr-2 h-4 w-4" /> Modificar Metadatos
             </Button>
           )
         )}
 
-        {status === 'success' && foliatedPdfUrl && (
+        {status === 'success' && modifiedPdfUrl && (
           <Button onClick={handleDownloadAndSave} className="w-full bg-green-500 hover:bg-green-600 text-white">
-              <Download className="mr-2 h-4 w-4" /> Descargar PDF Foliado
+              <Download className="mr-2 h-4 w-4" /> Descargar PDF Modificado
           </Button>
         )}
         
@@ -224,9 +224,9 @@ export default function FolioClient() {
   return (
     <main className="container mx-auto p-4 sm:p-6 lg:p-8 min-h-screen flex flex-col items-center">
       <header className="text-center mb-10">
-        <h1 className="text-5xl font-bold text-primary font-headline">Foliar Documento</h1>
+        <h1 className="text-5xl font-bold text-primary font-headline">Modificar Metadatos</h1>
         <p className="text-muted-foreground mt-2 text-lg">
-          Añade un número de folio y código de barras únicos a la primera página de tu documento.
+          Limpia y estandariza la metadata de tu PDF y ajústalo a tamaño carta.
         </p>
         <div className="mt-6 flex justify-center gap-4 flex-wrap">
             <Link href="/">
@@ -241,11 +241,11 @@ export default function FolioClient() {
                     Enmarcar Acta
                 </Button>
             </Link>
-             <Link href="/metadata">
-              <Button variant="outline">
-                  Modificar Metadata
-                  <FileCog className="ml-2 h-4 w-4" />
-              </Button>
+             <Link href="/folio">
+                <Button variant="outline">
+                    <Stamp className="mr-2 h-4 w-4" />
+                    Foliar Documento
+                </Button>
             </Link>
             <Link href="/dashboard">
                 <Button variant="secondary">
@@ -273,7 +273,7 @@ export default function FolioClient() {
             <CardHeader>
               <CardTitle>Vista Previa del PDF</CardTitle>
               <CardDescription>
-                {foliatedPdfUrl ? 'Tu documento foliado está listo abajo.' : (previewUrl ? 'Vista previa de tu documento cargado.' : 'Sube un archivo para ver la vista previa.')}
+                {modifiedPdfUrl ? 'Tu documento modificado está listo abajo.' : (previewUrl ? 'Vista previa de tu documento cargado.' : 'Sube un archivo para ver la vista previa.')}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">

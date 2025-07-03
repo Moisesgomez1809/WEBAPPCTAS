@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet } from 'lucide-react';
+import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -25,11 +25,12 @@ interface Stats {
   fusions: number;
   folios: number;
   frames: number;
+  metadata: number;
   profit: number;
 }
 
 export default function DashboardClient() {
-  const [stats, setStats] = useState<Stats>({ total: 0, fusions: 0, folios: 0, frames: 0, profit: 0 });
+  const [stats, setStats] = useState<Stats>({ total: 0, fusions: 0, folios: 0, frames: 0, metadata: 0, profit: 0 });
   const router = useRouter();
   const { toast } = useToast();
 
@@ -37,12 +38,14 @@ export default function DashboardClient() {
     const fusions = parseInt(localStorage.getItem('fusionCount') || '0', 10);
     const folios = parseInt(localStorage.getItem('folioCount') || '0', 10);
     const frames = parseInt(localStorage.getItem('frameCount') || '0', 10);
+    const metadata = parseInt(localStorage.getItem('metadataCount') || '0', 10);
     const profit = parseFloat(localStorage.getItem('totalProfit') || '0');
     setStats({
-      total: fusions + folios + frames,
+      total: fusions + folios + frames + metadata,
       fusions,
       folios,
       frames,
+      metadata,
       profit,
     });
   }, []);
@@ -52,8 +55,9 @@ export default function DashboardClient() {
         localStorage.setItem('fusionCount', '0');
         localStorage.setItem('folioCount', '0');
         localStorage.setItem('frameCount', '0');
+        localStorage.setItem('metadataCount', '0');
         localStorage.setItem('totalProfit', '0');
-        setStats({ total: 0, fusions: 0, folios: 0, frames: 0, profit: 0 });
+        setStats({ total: 0, fusions: 0, folios: 0, frames: 0, metadata: 0, profit: 0 });
         toast({
             title: "Estadísticas Reiniciadas",
             description: "Los contadores han sido puestos a cero.",
@@ -131,6 +135,16 @@ export default function DashboardClient() {
                         <p className="text-xs text-muted-foreground pt-1">Documentos con marco añadido</p>
                     </CardContent>
                 </Card>
+                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Metadata Modificada</CardTitle>
+                        <FileCog className="h-5 w-5 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-4xl font-bold">{stats.metadata}</div>
+                        <p className="text-xs text-muted-foreground pt-1">Documentos con metadata limpia</p>
+                    </CardContent>
+                </Card>
             </div>
 
             <Card>
@@ -149,6 +163,18 @@ export default function DashboardClient() {
                         <Button variant="outline" className="w-full h-12">
                             <Frame className="mr-2 h-4 w-4" />
                             Ir a Enmarcar
+                        </Button>
+                    </Link>
+                    <Link href="/folio" className="w-full">
+                        <Button variant="outline" className="w-full h-12">
+                            <Stamp className="mr-2 h-4 w-4" />
+                            Ir a Foliar
+                        </Button>
+                    </Link>
+                    <Link href="/metadata" className="w-full">
+                        <Button variant="outline" className="w-full h-12">
+                            <FileCog className="mr-2 h-4 w-4" />
+                            Modificar Metadata
                         </Button>
                     </Link>
                     <Link href="/upload" className="w-full">

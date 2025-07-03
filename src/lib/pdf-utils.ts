@@ -1,5 +1,5 @@
 "use client"
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, PageSizes } from 'pdf-lib';
 import * as QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 
@@ -28,7 +28,7 @@ export async function modifyReversePdfClient(reversePdfUri: string, curp: string
         const qrSize = 60; 
         const qrX = 30;
         const qrY = height - qrSize - 30; 
-        const textSize = 5;
+        const textSize = 4.5;
         const textYOffset = 5;
         
         // A single white rectangle to act as a background for both the QR code and the text
@@ -199,5 +199,58 @@ export async function framePdfClient(originalPdfUri: string, framePdfUri: string
     } catch (error) {
         console.error("Error framing PDF:", error);
         throw new Error("Failed to frame the PDF document. Ensure the frame PDF is valid.");
+    }
+}
+
+export async function modifyMetadataAndResizeClient(pdfUri: string): Promise<string> {
+    try {
+        const pdfBytes = await dataUriToUint8Array(pdfUri);
+        const originalDoc = await PDFDocument.load(pdfBytes);
+        
+        const newDoc = await PDFDocument.create();
+
+        // Clear metadata and set specific producer
+        newDoc.setTitle('');
+        newDoc.setAuthor('');
+        newDoc.setSubject('');
+        newDoc.setKeywords([]);
+        newDoc.setCreator('');
+        newDoc.setProducer('Oracle XML Publisher 5.6.2');
+        const fixedDate = new Date('2000-01-01T00:00:00Z');
+        newDoc.setCreationDate(fixedDate);
+        newDoc.setModificationDate(fixedDate);
+
+        const letterSize = PageSizes.Letter; // [612, 792] points
+        
+        const originalPages = originalDoc.getPages();
+        for (const originalPage of originalPages) {
+            const embeddedPage = await newDoc.embedPage(originalPage);
+            const { width: origWidth, height: origHeight } = originalPage.getSize();
+            
+            // Calculate scale to fit and preserve aspect ratio
+            const scale = Math.min(letterSize[0] / origWidth, letterSize[1] / origHeight);
+            const scaledWidth = origWidth * scale;
+            const scaledHeight = origHeight * scale;
+
+            // Calculate position to center the content
+            const x = (letterSize[0] - scaledWidth) / 2;
+            const y = (letterSize[1] - scaledHeight) / 2;
+            
+            const newPage = newDoc.addPage(letterSize);
+            
+            newPage.drawPage(embeddedPage, {
+                x,
+                y,
+                width: scaledWidth,
+                height: scaledHeight,
+            });
+        }
+
+        const modifiedPdfBase64 = await newDoc.saveAsBase64({ dataUri: true });
+        return modifiedPdfBase64;
+
+    } catch (error) {
+        console.error("Error modifying metadata and resizing PDF:", error);
+        throw new Error("No se pudo modificar la metadata y redimensionar el PDF. El archivo puede estar corrupto.");
     }
 }
