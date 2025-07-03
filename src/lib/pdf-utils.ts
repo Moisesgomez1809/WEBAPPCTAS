@@ -181,7 +181,7 @@ export async function framePdfClient(originalPdfUri: string, framePdfUri: string
         // Adjust these values to change the size and position of the embedded page.
         // Smaller margins make the embedded page bigger.
         // Increasing `y` (pageMargin.bottom) pushes the page up.
-        const pageMargin = { top: -2 , bottom: 5, left: 0 , right: 0 };
+        const pageMargin = { top: -20 , bottom: 20, left: 18 , right: 18 };
 
         const embedWidth = frameWidth - pageMargin.left - pageMargin.right;
         const embedHeight = frameHeight - pageMargin.top - pageMargin.bottom;
@@ -227,8 +227,10 @@ export async function modifyMetadataAndResizeClient(pdfUri: string): Promise<str
             const embeddedPage = await newDoc.embedPage(originalPage);
             const { width: origWidth, height: origHeight } = originalPage.getSize();
             
-            // Calculate scale to fit and preserve aspect ratio
-            const scale = Math.min(letterSize[0] / origWidth, letterSize[1] / origHeight);
+            // Calculate scale to fit and preserve aspect ratio, then increase it slightly.
+            let scale = Math.min(letterSize[0] / origWidth, letterSize[1] / origHeight);
+            scale *= 1.03; // Make it 3% larger
+
             const scaledWidth = origWidth * scale;
             const scaledHeight = origHeight * scale;
 
