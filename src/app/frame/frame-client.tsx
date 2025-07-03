@@ -6,10 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, BarChart3, Frame, Combine, Stamp } from 'lucide-react';
-import { extractIssuingEntity, getReversePdfAsDataUri, extractDocumentDetails } from '../actions';
-import { mergePdfsClient, modifyReversePdfClient, framePdfClient } from '@/lib/pdf-utils';
+import { getReversePdfAsDataUri, extractDocumentDetails } from '../actions';
+import { framePdfClient, mergePdfsClient, modifyReversePdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ReverseSideEntry } from '@/lib/types';
 import { useRouter } from 'next/navigation';
@@ -17,13 +16,12 @@ import Link from 'next/link';
 import UtilitiesCalculator from '@/components/utilities-calculator';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
-type LoadingStep = 'idle' | 'finding_frame' | 'framing' | 'extracting' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'done';
+type LoadingStep = 'idle' | 'finding_frame' | 'framing' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'done';
 
 const loadingMessages: Record<LoadingStep, string> = {
   idle: 'Esperando para empezar...',
   finding_frame: 'Buscando el marco en tu base de datos...',
   framing: 'Aplicando el marco al acta...',
-  extracting: 'Analizando documento para identificar la entidad emisora...',
   extractingDetails: 'Extrayendo CURP e Identificador Electrónico...',
   matching: 'Buscando el reverso correcto...',
   modifying: 'Creando el nuevo código QR para el reverso...',
@@ -179,8 +177,15 @@ export default function FrameClient() {
     }
   };
 
-  const processFramingAndFusion = async (entityToUse: string, isAuto: boolean) => {
-    if (!pdfDataUri) return;
+  const processFramingAndFusion = async (entityToUse: string) => {
+    if (!pdfDataUri || !entityToUse) {
+       toast({
+        title: "Selección Requerida",
+        description: "Por favor, selecciona un estado antes de continuar.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setStatus('loading');
     setError(null);
@@ -201,21 +206,12 @@ export default function FrameClient() {
         setLoadingStep('extractingDetails');
         const { curp, electronicId } = await extractDocumentDetails({ pdfDataUri });
         if (!curp || !electronicId) throw new Error("No se pudo extraer la CURP o el Identificador Electrónico.");
-
-        let finalEntity: string;
-        if (isAuto) {
-          setLoadingStep('extracting');
-          const { issuingEntity } = await extractIssuingEntity({ pdfDataUri });
-          finalEntity = issuingEntity;
-        } else {
-          finalEntity = entityToUse;
-        }
         
-        setEntity(finalEntity);
+        setEntity(entityToUse);
         
         setLoadingStep('matching');
-        const reverseSideEntry = findReverseSide(finalEntity, db);
-        if (!reverseSideEntry) throw new Error(`No se pudo encontrar un reverso para "${finalEntity}".`);
+        const reverseSideEntry = findReverseSide(entityToUse, db);
+        if (!reverseSideEntry) throw new Error(`No se pudo encontrar un reverso para "${entityToUse}".`);
         const reversePdfDataUri = await getReversePdfAsDataUri(reverseSideEntry['link del reverso para descarga directa']);
 
         setLoadingStep('modifying');
@@ -284,19 +280,8 @@ export default function FrameClient() {
             {entity && <p className="text-sm text-muted-foreground">Entidad: {entity}</p>}
           </div>
         ) : (
-          <Tabs defaultValue="automatic" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="automatic">Automático (IA)</TabsTrigger>
-              <TabsTrigger value="manual">Selección Manual</TabsTrigger>
-            </TabsList>
-            <TabsContent value="automatic" className="pt-4">
-               <p className="text-sm text-muted-foreground mb-4">La IA analizará tu documento para encontrar el marco y el reverso correctos.</p>
-               <Button onClick={() => processFramingAndFusion('', true)} className="w-full">
-                <Sparkles className="mr-2 h-4 w-4" /> Enmarcar y Fusionar con IA
-              </Button>
-            </TabsContent>
-            <TabsContent value="manual" className="pt-4 space-y-4">
-              <p className="text-sm text-muted-foreground">Si la IA falla, selecciona manualmente el estado para encontrar el reverso.</p>
+          <div className="pt-4 space-y-4">
+              <p className="text-sm text-muted-foreground">Selecciona manualmente el estado para encontrar el reverso.</p>
                <Select onValueChange={setManualEntity} value={manualEntity}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona un estado..." />
@@ -305,11 +290,10 @@ export default function FrameClient() {
                   {availableStates.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Button onClick={() => processFramingAndFusion(manualEntity, false)} disabled={!manualEntity} className="w-full">
-                <Frame className="mr-2 h-4 w-4" /> Enmarcar y Fusionar con Estado Seleccionado
+              <Button onClick={() => processFramingAndFusion(manualEntity)} disabled={!manualEntity} className="w-full">
+                <Frame className="mr-2 h-4 w-4" /> Enmarcar y Fusionar
               </Button>
-            </TabsContent>
-          </Tabs>
+            </div>
         )}
         {status === 'success' && finalPdfUrl && (
           <Button onClick={handleDownloadAndSave} className="w-full bg-green-500 hover:bg-green-600 text-white">
@@ -326,7 +310,7 @@ export default function FrameClient() {
       </CardContent>
       <CardFooter className="flex-col sm:flex-row gap-2 justify-between items-center">
         {entity && status !== 'loading' && (
-          <p className="text-sm text-muted-foreground">Entidad Identificada: <strong>{entity}</strong></p>
+          <p className="text-sm text-muted-foreground">Entidad Seleccionada: <strong>{entity}</strong></p>
         )}
         <Button onClick={handleReset} variant="outline" className="w-full sm:w-auto mt-2 sm:mt-0 ml-auto">
           <RefreshCcw className="mr-2 h-4 w-4" /> Empezar de Nuevo

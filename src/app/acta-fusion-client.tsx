@@ -5,11 +5,10 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, ArrowRight, BarChart3, Frame, Stamp, Wallet } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, Frame, Stamp, Wallet, BarChart3 } from 'lucide-react';
 import { extractIssuingEntity, getReversePdfAsDataUri, extractDocumentDetails } from './actions';
 import { mergePdfsClient, modifyReversePdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ReverseSideEntry } from '@/lib/types';
 import { useRouter } from 'next/navigation';
@@ -17,11 +16,10 @@ import Link from 'next/link';
 import UtilitiesCalculator from '@/components/utilities-calculator';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
-type LoadingStep = 'idle' | 'extracting' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'done';
+type LoadingStep = 'idle' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'done';
 
 const loadingMessages: Record<LoadingStep, string> = {
   idle: 'Esperando para empezar...',
-  extracting: 'Analizando documento para identificar la entidad emisora...',
   extractingDetails: 'Extrayendo CURP e Identificador Electrónico...',
   matching: 'Buscando el reverso correcto en tu base de datos...',
   modifying: 'Reemplazando el código QR en el reverso...',
@@ -208,45 +206,37 @@ export default function ActaFusionClient() {
     }
   };
 
-  const processFusion = async (entityToUse: string, isAuto: boolean) => {
-    if (!originalPdfUrl) return;
+  const processFusion = async (entityToUse: string) => {
+    if (!originalPdfUrl || !entityToUse) {
+       toast({
+        title: "Selección Requerida",
+        description: "Por favor, selecciona un estado antes de fusionar.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setStatus('loading');
-    setLoadingStep(isAuto ? 'extracting' : 'matching');
+    setLoadingStep('extractingDetails');
     setError(null);
     setEntity(null);
     setExtractedCurp(null);
 
     try {
-      let finalEntity = entityToUse;
-
-      setLoadingStep('extractingDetails');
-      const detailsPromise = extractDocumentDetails({ pdfDataUri: originalPdfUrl });
-      
-      let entityPromise;
-      if (isAuto) {
-          setLoadingStep('extracting');
-          entityPromise = extractIssuingEntity({ pdfDataUri: originalPdfUrl });
-      } else {
-          entityPromise = Promise.resolve({ issuingEntity: entityToUse });
-      }
-
-      const [detailsResult, entityResult] = await Promise.all([detailsPromise, entityPromise]);
-      
-      finalEntity = entityResult.issuingEntity;
-      const { curp, electronicId } = detailsResult;
-
-      setExtractedCurp(curp);
+      const { curp, electronicId } = await extractDocumentDetails({ pdfDataUri: originalPdfUrl });
       
       if (!curp || !electronicId) {
           throw new Error("No se pudo extraer la CURP o el Identificador Electrónico. Asegúrate de que el documento sea claro.");
       }
-      setEntity(finalEntity);
+      
+      setExtractedCurp(curp);
+      setEntity(entityToUse);
+      
       setLoadingStep('matching');
       
-      const reverseSideEntry = findReverseSide(finalEntity, db);
+      const reverseSideEntry = findReverseSide(entityToUse, db);
       if (!reverseSideEntry) {
-          throw new Error(`No se pudo encontrar un reverso para "${finalEntity}" en tu base de datos.`);
+          throw new Error(`No se pudo encontrar un reverso para "${entityToUse}" en tu base de datos.`);
       }
 
       const reverseSideUrl = reverseSideEntry['link del reverso para descarga directa'];
@@ -319,19 +309,8 @@ export default function ActaFusionClient() {
             {entity && <p className="text-sm text-muted-foreground">Procesando para: {entity}</p>}
           </div>
         ) : (
-          <Tabs defaultValue="automatic" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="automatic">Automático (IA)</TabsTrigger>
-              <TabsTrigger value="manual">Selección Manual</TabsTrigger>
-            </TabsList>
-            <TabsContent value="automatic" className="pt-4">
-               <p className="text-sm text-muted-foreground mb-4">Deja que la IA analice tu documento para encontrar el reverso correcto.</p>
-               <Button onClick={() => processFusion('', true)} className="w-full">
-                <Sparkles className="mr-2 h-4 w-4" /> Fusionar con IA
-              </Button>
-            </TabsContent>
-            <TabsContent value="manual" className="pt-4 space-y-4">
-              <p className="text-sm text-muted-foreground">Si la IA falla o identifica el estado incorrecto, puedes seleccionarlo manually.</p>
+          <div className="pt-4 space-y-4">
+              <p className="text-sm text-muted-foreground">Selecciona el estado emisor del acta de nacimiento para encontrar el reverso correcto.</p>
                <Select onValueChange={setManualEntity} value={manualEntity}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona un estado..." />
@@ -340,11 +319,10 @@ export default function ActaFusionClient() {
                   {availableStates.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Button onClick={() => processFusion(manualEntity, false)} disabled={!manualEntity} className="w-full">
-                <Sparkles className="mr-2 h-4 w-4" /> Fusionar con Estado Seleccionado
+              <Button onClick={() => processFusion(manualEntity)} disabled={!manualEntity} className="w-full">
+                <Sparkles className="mr-2 h-4 w-4" /> Fusionar Documentos
               </Button>
-            </TabsContent>
-          </Tabs>
+            </div>
         )}
 
         {status === 'success' && combinedPdfUrl && (
@@ -363,7 +341,7 @@ export default function ActaFusionClient() {
       </CardContent>
       <CardFooter className="flex-col sm:flex-row gap-2 justify-between items-center">
          {entity && status !== 'loading' && (
-            <p className="text-sm text-muted-foreground">Entidad Identificada: <strong>{entity}</strong></p>
+            <p className="text-sm text-muted-foreground">Entidad Seleccionada: <strong>{entity}</strong></p>
          )}
          <Button onClick={handleReset} variant="outline" className="w-full sm:w-auto mt-2 sm:mt-0 ml-auto">
             <RefreshCcw className="mr-2 h-4 w-4" /> Empezar de Nuevo
