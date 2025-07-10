@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, BarChart3, Frame, Combine, Stamp, FileCog, Type } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, BarChart3, Frame, Combine, Stamp, FileCog } from 'lucide-react';
 import { getReversePdfAsDataUri, extractDocumentDetails } from '../actions';
 import { framePdfClient, mergePdfsClient, modifyReversePdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
@@ -328,7 +328,6 @@ export default function FrameClient() {
           <Link href="/dashboard"><Button variant="outline"><Combine className="mr-2 h-4 w-4" />Ir a Acta Fusion</Button></Link>
           <Link href="/folio"><Button variant="outline"><Stamp className="mr-2 h-4 w-4" />Ir a Foliar</Button></Link>
           <Link href="/metadata"><Button variant="outline"><FileCog className="mr-2 h-4 w-4"/>Modificar Metadata</Button></Link>
-          <Link href="/font-cleaner"><Button variant="outline"><Type className="mr-2 h-4 w-4"/>Limpiar Fuentes</Button></Link>
           <Link href="/"><Button variant="secondary"><BarChart3 className="mr-2 h-4 w-4" />Ver Dashboard</Button></Link>
         </div>
       </header>

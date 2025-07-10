@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Type } from 'lucide-react';
+import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -176,12 +176,6 @@ export default function ActaFusionClient() {
                         <Button variant="outline" className="w-full h-12">
                             <FileCog className="mr-2 h-4 w-4" />
                             Modificar Metadata
-                        </Button>
-                    </Link>
-                     <Link href="/font-cleaner" className="w-full">
-                        <Button variant="outline" className="w-full h-12">
-                            <Type className="mr-2 h-4 w-4" />
-                            Limpiar Fuentes
                         </Button>
                     </Link>
                     <Link href="/upload" className="w-full">

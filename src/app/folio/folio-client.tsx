@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, ArrowLeft, Stamp, BarChart3, Combine, Frame, FileCog, Type } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, ArrowLeft, Stamp, BarChart3, Combine, Frame, FileCog } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
 import { addFolioToPdfClient } from '@/lib/pdf-utils';
@@ -245,12 +245,6 @@ export default function FolioClient() {
               <Button variant="outline">
                   Modificar Metadata
                   <FileCog className="mr-2 h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/font-cleaner">
-              <Button variant="outline">
-                  Limpiar Fuentes
-                  <Type className="mr-2 h-4 w-4" />
               </Button>
             </Link>
             <Link href="/">
