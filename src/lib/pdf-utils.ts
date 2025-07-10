@@ -261,34 +261,54 @@ export async function modifyMetadataAndResizeClient(pdfUri: string): Promise<str
 export async function cleanFontsAndResizeClient(pdfUri: string): Promise<string> {
     try {
         const pdfBytes = await dataUriToUint8Array(pdfUri);
-        const originalDoc = await PDFDocument.load(pdfBytes);
+        const originalDoc = await PDFDocument.load(pdfBytes, {
+            // This option can sometimes help with problematic files
+            ignoreEncryption: true,
+        });
+
+        const finalDoc = await PDFDocument.create();
         
+        // Explicitly load the standard fonts we want to keep
+        const helveticaFont = await finalDoc.embedFont(StandardFonts.Helvetica);
+        const helveticaBoldFont = await finalDoc.embedFont(StandardFonts.HelveticaBold);
+
+        const copiedPageIndices = originalDoc.getPageIndices();
+        const copiedPages = await finalDoc.copyPages(originalDoc, copiedPageIndices);
+
+        for (const page of copiedPages) {
+            finalDoc.addPage(page);
+        }
+
+        // Attempt to remove all fonts except the ones we've explicitly embedded
+        const fontNames = finalDoc.getFontNames();
+        for (const fontName of fontNames) {
+            if (fontName !== helveticaFont.name && fontName !== helveticaBoldFont.name) {
+                try {
+                    finalDoc.removeFont(fontName);
+                } catch (e) {
+                    console.warn(`Could not remove font: ${fontName}`, e);
+                }
+            }
+        }
+
+        // --- Now resize and clean metadata ---
         const newDoc = await PDFDocument.create();
-
-        // Ensure only Helvetica fonts are registered in the new document context
-        await newDoc.embedFont(StandardFonts.Helvetica);
-        await newDoc.embedFont(StandardFonts.HelveticaBold);
-
-        // Clear metadata and set specific producer
+        newDoc.setProducer('Oracle XML Publisher 5.6.2');
         newDoc.setTitle('');
         newDoc.setAuthor('');
         newDoc.setSubject('');
         newDoc.setKeywords([]);
         newDoc.setCreator('');
-        newDoc.setProducer('Oracle XML Publisher 5.6.2');
         const fixedDate = new Date('1970-01-01T00:00:00.000Z');
         newDoc.setCreationDate(fixedDate);
         newDoc.setModificationDate(fixedDate);
-
-        const letterSize = PageSizes.Letter; // [612, 792] points
         
-        // Copy pages from the original document to the new one.
-        // This process helps pdf-lib reconstruct the document with a cleaner font table.
-        const copiedPageIndices = originalDoc.getPageIndices();
-        const copiedPages = await newDoc.copyPages(originalDoc, copiedPageIndices);
-
-        for (const copiedPage of copiedPages) {
-            const { width: origWidth, height: origHeight } = copiedPage.getSize();
+        const letterSize = PageSizes.Letter;
+        const finalPages = finalDoc.getPages();
+        
+        for (const originalPage of finalPages) {
+             const embeddedPage = await newDoc.embedPage(originalPage);
+             const { width: origWidth, height: origHeight } = originalPage.getSize();
             
             let scale = Math.min(letterSize[0] / origWidth, letterSize[1] / origHeight);
             scale *= 1.03;
@@ -301,13 +321,14 @@ export async function cleanFontsAndResizeClient(pdfUri: string): Promise<string>
             
             const newPage = newDoc.addPage(letterSize);
             
-            newPage.drawPage(copiedPage, {
+            newPage.drawPage(embeddedPage, {
                 x,
                 y,
                 width: scaledWidth,
                 height: scaledHeight,
             });
         }
+
 
         const modifiedPdfBase64 = await newDoc.saveAsBase64({ dataUri: true });
         return modifiedPdfBase64;
