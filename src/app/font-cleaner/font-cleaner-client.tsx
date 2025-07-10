@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, BarChart3, Combine, Frame, Stamp, FileCog, FontGlyph } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, BarChart3, Combine, Frame, Stamp, FileCog, Type } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
 import { cleanFontsAndResizeClient } from '@/lib/pdf-utils';
@@ -195,7 +195,7 @@ export default function FontCleanerClient() {
         ) : (
           status !== 'success' && (
             <Button onClick={handleProcessPdf} className="w-full">
-              <FontGlyph className="mr-2 h-4 w-4" /> Limpiar Fuentes y Procesar
+              <Type className="mr-2 h-4 w-4" /> Limpiar Fuentes y Procesar
             </Button>
           )
         )}

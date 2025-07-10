@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, BarChart3, Combine, Frame, Stamp, FileCog, FontGlyph } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, BarChart3, Combine, Frame, Stamp, FileCog, Type } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
 import { modifyMetadataAndResizeClient } from '@/lib/pdf-utils';
@@ -249,14 +249,14 @@ export default function MetadataClient() {
             </Link>
             <Link href="/font-cleaner">
                 <Button variant="outline">
-                    <FontGlyph className="mr-2 h-4 w-4" />
+                    <Type className="mr-2 h-4 w-4" />
                     Limpiar Fuentes
                 </Button>
             </Link>
             <Link href="/">
                 <Button variant="secondary">
                     Ver Dashboard
-                    <BarChart3 className="mr-2 h-4 w-4" />
+                    <BarChart3 className="ml-2 h-4 w-4" />
                 </Button>
             </Link>
         </div>

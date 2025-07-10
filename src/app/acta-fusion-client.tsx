@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, FontGlyph } from 'lucide-react';
+import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Type } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -35,6 +35,7 @@ export default function ActaFusionClient() {
   const { toast } = useToast();
 
   useEffect(() => {
+    // This effect should only run on the client side
     const fusions = parseInt(localStorage.getItem('fusionCount') || '0', 10);
     const folios = parseInt(localStorage.getItem('folioCount') || '0', 10);
     const frames = parseInt(localStorage.getItem('frameCount') || '0', 10);
@@ -179,7 +180,7 @@ export default function ActaFusionClient() {
                     </Link>
                      <Link href="/font-cleaner" className="w-full">
                         <Button variant="outline" className="w-full h-12">
-                            <FontGlyph className="mr-2 h-4 w-4" />
+                            <Type className="mr-2 h-4 w-4" />
                             Limpiar Fuentes
                         </Button>
                     </Link>
