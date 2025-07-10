@@ -8,12 +8,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, BarChart3, Combine, Frame, Stamp, FileCog, FontGlyph } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
-import { modifyMetadataAndResizeClient } from '@/lib/pdf-utils';
+import { cleanFontsAndResizeClient } from '@/lib/pdf-utils';
 import UtilitiesCalculator from '@/components/utilities-calculator';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
-export default function MetadataClient() {
+export default function FontCleanerClient() {
   const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [pdfDataUri, setPdfDataUri] = useState<string | null>(null); // data-uri for processing
   const [previewUrl, setPreviewUrl] = useState<string | null>(null); // object-url for iframe
@@ -104,12 +104,13 @@ export default function MetadataClient() {
         });
       }
 
-      const currentCount = parseInt(localStorage.getItem('metadataCount') || '0', 10);
-      localStorage.setItem('metadataCount', (currentCount + 1).toString());
+      // Note: We can add a new counter for this tool if needed, e.g., 'fontCleanerCount'
+      // const currentCount = parseInt(localStorage.getItem('fontCleanerCount') || '0', 10);
+      // localStorage.setItem('fontCleanerCount', (currentCount + 1).toString());
 
       const link = document.createElement('a');
       link.href = modifiedPdfUrl;
-      link.download = originalFile?.name || 'documento-modificado.pdf';
+      link.download = originalFile?.name || 'documento-limpio.pdf';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -124,14 +125,14 @@ export default function MetadataClient() {
   };
 
 
-  const handleProcessMetadata = async () => {
+  const handleProcessPdf = async () => {
     if (!pdfDataUri) return;
 
     setStatus('loading');
     setError(null);
 
     try {
-      const modifiedPdf = await modifyMetadataAndResizeClient(pdfDataUri);
+      const modifiedPdf = await cleanFontsAndResizeClient(pdfDataUri);
 
       setModifiedPdfUrl(modifiedPdf);
       await setPreviewFromDataUri(modifiedPdf);
@@ -139,7 +140,7 @@ export default function MetadataClient() {
       setStatus('success');
       toast({
         title: "¡Éxito!",
-        description: "La metadata y el tamaño de tu documento han sido actualizados.",
+        description: "Las fuentes y el tamaño de tu documento han sido estandarizados.",
       });
 
     } catch (e: any) {
@@ -174,7 +175,7 @@ export default function MetadataClient() {
     >
       <FileUp className="w-16 h-16 text-primary mb-4" />
       <h3 className="text-xl font-semibold text-foreground">Arrastra y suelta tu documento</h3>
-      <p className="text-muted-foreground mt-2">o haz clic para seleccionar un archivo PDF para editar su metadata</p>
+      <p className="text-muted-foreground mt-2">o haz clic para seleccionar un archivo PDF para limpiar sus fuentes</p>
       <input id="file-upload" type="file" className="hidden" accept="application/pdf" onChange={(e) => handleFileChange(e.target.files ? e.target.files[0] : null)} />
     </div>
   );
@@ -189,19 +190,19 @@ export default function MetadataClient() {
         {status === 'loading' ? (
           <div className="flex flex-col items-center justify-center space-y-4 p-8 bg-background rounded-lg">
             <Loader2 className="w-12 h-12 text-primary animate-spin" />
-            <p className="text-lg font-medium text-foreground">Modificando metadata y tamaño...</p>
+            <p className="text-lg font-medium text-foreground">Estandarizando fuentes y tamaño...</p>
           </div>
         ) : (
           status !== 'success' && (
-            <Button onClick={handleProcessMetadata} className="w-full">
-              <FileCog className="mr-2 h-4 w-4" /> Modificar Metadatos
+            <Button onClick={handleProcessPdf} className="w-full">
+              <FontGlyph className="mr-2 h-4 w-4" /> Limpiar Fuentes y Procesar
             </Button>
           )
         )}
 
         {status === 'success' && modifiedPdfUrl && (
           <Button onClick={handleDownloadAndSave} className="w-full bg-green-500 hover:bg-green-600 text-white">
-              <Download className="mr-2 h-4 w-4" /> Descargar PDF Modificado
+              <Download className="mr-2 h-4 w-4" /> Descargar PDF Procesado
           </Button>
         )}
         
@@ -224,9 +225,9 @@ export default function MetadataClient() {
   return (
     <main className="container mx-auto p-4 sm:p-6 lg:p-8 min-h-screen flex flex-col items-center">
       <header className="text-center mb-10">
-        <h1 className="text-5xl font-bold text-primary font-headline">Modificar Metadatos</h1>
+        <h1 className="text-5xl font-bold text-primary font-headline">Limpiar Fuentes del PDF</h1>
         <p className="text-muted-foreground mt-2 text-lg">
-          Limpia y estandariza la metadata de tu PDF y ajústalo a tamaño carta.
+          Estandariza las fuentes a Helvetica, limpia la metadata y ajusta el PDF a tamaño carta.
         </p>
         <div className="mt-6 flex justify-center gap-4 flex-wrap">
             <Link href="/dashboard">
@@ -247,16 +248,16 @@ export default function MetadataClient() {
                     Foliar Documento
                 </Button>
             </Link>
-            <Link href="/font-cleaner">
+             <Link href="/metadata">
                 <Button variant="outline">
-                    <FontGlyph className="mr-2 h-4 w-4" />
-                    Limpiar Fuentes
+                    <FileCog className="mr-2 h-4 w-4" />
+                    Modificar Metadata
                 </Button>
             </Link>
             <Link href="/">
                 <Button variant="secondary">
                     Ver Dashboard
-                    <BarChart3 className="mr-2 h-4 w-4" />
+                    <BarChart3 className="ml-2 h-4 w-4" />
                 </Button>
             </Link>
         </div>
@@ -279,7 +280,7 @@ export default function MetadataClient() {
             <CardHeader>
               <CardTitle>Vista Previa del PDF</CardTitle>
               <CardDescription>
-                {modifiedPdfUrl ? 'Tu documento modificado está listo abajo.' : (previewUrl ? 'Vista previa de tu documento cargado.' : 'Sube un archivo para ver la vista previa.')}
+                {modifiedPdfUrl ? 'Tu documento procesado está listo abajo.' : (previewUrl ? 'Vista previa de tu documento cargado.' : 'Sube un archivo para ver la vista previa.')}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">

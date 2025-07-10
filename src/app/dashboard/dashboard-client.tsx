@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, Frame, Stamp, Wallet, BarChart3, FileCog } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, Frame, Stamp, Wallet, BarChart3, FileCog, FontGlyph } from 'lucide-react';
 import { extractIssuingEntity, getReversePdfAsDataUri, extractDocumentDetails } from '../actions';
 import { mergePdfsClient, modifyReversePdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
@@ -374,6 +374,12 @@ export default function DashboardClient() {
               <Button variant="outline">
                   Modificar Metadata
                   <FileCog className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+             <Link href="/font-cleaner">
+              <Button variant="outline">
+                  Limpiar Fuentes
+                  <FontGlyph className="ml-2 h-4 w-4" />
               </Button>
             </Link>
              <Link href="/">

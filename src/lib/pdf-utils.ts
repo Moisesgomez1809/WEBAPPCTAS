@@ -1,3 +1,4 @@
+
 "use client"
 import { PDFDocument, rgb, StandardFonts, PageSizes } from 'pdf-lib';
 import * as QRCode from 'qrcode';
@@ -216,7 +217,7 @@ export async function modifyMetadataAndResizeClient(pdfUri: string): Promise<str
         newDoc.setKeywords([]);
         newDoc.setCreator('');
         newDoc.setProducer('Oracle XML Publisher 5.6.2');
-        const fixedDate = new Date('');
+        const fixedDate = new Date('1970-01-01T00:00:00.000Z');
         newDoc.setCreationDate(fixedDate);
         newDoc.setModificationDate(fixedDate);
 
@@ -229,7 +230,7 @@ export async function modifyMetadataAndResizeClient(pdfUri: string): Promise<str
             
             // Calculate scale to fit and preserve aspect ratio, then increase it slightly.
             let scale = Math.min(letterSize[0] / origWidth, letterSize[1] / origHeight);
-            scale *= 1.06; // Make it 3% larger
+            scale *= 1.03; // Make it 3% larger
 
             const scaledWidth = origWidth * scale;
             const scaledHeight = origHeight * scale;
@@ -254,5 +255,65 @@ export async function modifyMetadataAndResizeClient(pdfUri: string): Promise<str
     } catch (error) {
         console.error("Error modifying metadata and resizing PDF:", error);
         throw new Error("No se pudo modificar la metadata y redimensionar el PDF. El archivo puede estar corrupto.");
+    }
+}
+
+export async function cleanFontsAndResizeClient(pdfUri: string): Promise<string> {
+    try {
+        const pdfBytes = await dataUriToUint8Array(pdfUri);
+        const originalDoc = await PDFDocument.load(pdfBytes);
+        
+        const newDoc = await PDFDocument.create();
+
+        // Ensure only Helvetica fonts are registered in the new document context
+        await newDoc.embedFont(StandardFonts.Helvetica);
+        await newDoc.embedFont(StandardFonts.HelveticaBold);
+
+        // Clear metadata and set specific producer
+        newDoc.setTitle('');
+        newDoc.setAuthor('');
+        newDoc.setSubject('');
+        newDoc.setKeywords([]);
+        newDoc.setCreator('');
+        newDoc.setProducer('Oracle XML Publisher 5.6.2');
+        const fixedDate = new Date('1970-01-01T00:00:00.000Z');
+        newDoc.setCreationDate(fixedDate);
+        newDoc.setModificationDate(fixedDate);
+
+        const letterSize = PageSizes.Letter; // [612, 792] points
+        
+        // Copy pages from the original document to the new one.
+        // This process helps pdf-lib reconstruct the document with a cleaner font table.
+        const copiedPageIndices = originalDoc.getPageIndices();
+        const copiedPages = await newDoc.copyPages(originalDoc, copiedPageIndices);
+
+        for (const copiedPage of copiedPages) {
+            const { width: origWidth, height: origHeight } = copiedPage.getSize();
+            
+            let scale = Math.min(letterSize[0] / origWidth, letterSize[1] / origHeight);
+            scale *= 1.03;
+
+            const scaledWidth = origWidth * scale;
+            const scaledHeight = origHeight * scale;
+
+            const x = (letterSize[0] - scaledWidth) / 2;
+            const y = (letterSize[1] - scaledHeight) / 2;
+            
+            const newPage = newDoc.addPage(letterSize);
+            
+            newPage.drawPage(copiedPage, {
+                x,
+                y,
+                width: scaledWidth,
+                height: scaledHeight,
+            });
+        }
+
+        const modifiedPdfBase64 = await newDoc.saveAsBase64({ dataUri: true });
+        return modifiedPdfBase64;
+
+    } catch (error) {
+        console.error("Error cleaning fonts and resizing PDF:", error);
+        throw new Error("No se pudo limpiar las fuentes y redimensionar el PDF. El archivo puede estar corrupto o usar fuentes no estándar.");
     }
 }
