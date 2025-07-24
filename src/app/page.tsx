@@ -1,10 +1,5 @@
-import DatabaseGuard from './database-guard';
-import ActaFusionClient from './acta-fusion-client';
+import LoginPage from './login/page';
 
 export default function Home() {
-  return (
-    <DatabaseGuard>
-      <ActaFusionClient />
-    </DatabaseGuard>
-  );
+  return <LoginPage />;
 }

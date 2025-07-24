@@ -1,12 +1,12 @@
 import AuthGuard from '@/components/auth-guard';
 import DatabaseGuard from '../database-guard';
-import DashboardClient from './dashboard-client';
+import ActaFusionClient from '../acta-fusion-client';
 
-export default function DashboardPage() {
+export default function HomePage() {
   return (
     <AuthGuard>
       <DatabaseGuard>
-        <DashboardClient />
+        <ActaFusionClient />
       </DatabaseGuard>
     </AuthGuard>
   );

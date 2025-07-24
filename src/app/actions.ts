@@ -1,7 +1,26 @@
+
 'use server';
 
 import { extractIssuingEntity as extractEntityFlow } from '@/ai/flows/extract-entity';
 import { extractDocumentDetails as extractDetailsFlow } from '@/ai/flows/extract-details';
+import { get, ref } from 'firebase/database';
+import { database } from '@/lib/firebase';
+
+export async function verifyUser(username: string, token: string): Promise<boolean> {
+  try {
+    const userRef = ref(database, `USERS/${username}`);
+    const snapshot = await get(userRef);
+
+    if (snapshot.exists()) {
+      const storedToken = snapshot.val();
+      return storedToken === token;
+    }
+    return false;
+  } catch (error) {
+    console.error("Firebase verification failed:", error);
+    return false;
+  }
+}
 
 
 // This function attempts to convert a Google Drive viewer URL to a direct download link.

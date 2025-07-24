@@ -241,10 +241,10 @@ export default function MetadataClient() {
                     Enmarcar Acta
                 </Button>
             </Link>
-            <Link href="/">
+            <Link href="/home">
                 <Button variant="secondary">
                     Ver Dashboard
-                    <BarChart3 className="ml-2 h-4 w-4" />
+                    <BarChart3 className="mr-2 h-4 w-4" />
                 </Button>
             </Link>
         </div>

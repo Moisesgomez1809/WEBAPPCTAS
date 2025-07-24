@@ -390,7 +390,7 @@ export default function DashboardClient() {
                   <FileCog className="ml-2 h-4 w-4" />
               </Button>
             </Link>
-             <Link href="/">
+             <Link href="/home">
                 <Button variant="secondary">
                     Ver Dashboard
                     <BarChart3 className="ml-2 h-4 w-4" />
