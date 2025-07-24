@@ -2,6 +2,8 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { goOffline } from 'firebase/database';
+import { database } from '@/lib/firebase';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -41,6 +43,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('reverse-sides-db'); // Also clear the DB on logout
+    goOffline(database); // Explicitly close the connection to Firebase
   };
 
   return (
