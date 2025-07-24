@@ -47,12 +47,12 @@ export async function fetchReverseSidesFromDB(): Promise<ReverseSideEntry[]> {
 
 export async function fetchFrameFromDB(): Promise<string> {
     try {
-        const frameRef = ref(database, 'MARCOS/MARCO DE ACTAS');
+        const frameRef = ref(database, 'MARCOS/MARCO ACTAS');
         const snapshot = await get(frameRef);
         if (snapshot.exists()) {
             return snapshot.val();
         }
-        throw new Error("Frame link not found in Firebase at MARCOS/MARCO DE ACTAS.");
+        throw new Error("Frame link not found in Firebase at MARCOS/MARCO ACTAS.");
     } catch (error) {
         console.error("Firebase frame fetch failed:", error);
         throw new Error("Could not fetch frame link from Firebase.");
