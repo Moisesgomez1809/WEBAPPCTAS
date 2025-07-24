@@ -24,10 +24,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         setUser(JSON.parse(storedUser));
+      } else {
+        // If there's no user, ensure we are offline.
+        goOffline(database);
       }
     } catch (e) {
       console.error("Failed to parse user from localStorage", e);
       localStorage.removeItem('user');
+      goOffline(database);
     } finally {
       setIsLoading(false);
     }
@@ -37,13 +41,16 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     const userData = { username, token };
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
+    // The database guard will handle going online implicitly.
   };
 
   const logout = () => {
+    // First, explicitly close the Firebase connection.
+    goOffline(database);
+    // Then, clear user data from state and local storage.
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('reverse-sides-db'); // Also clear the DB on logout
-    goOffline(database); // Explicitly close the connection to Firebase
   };
 
   return (
