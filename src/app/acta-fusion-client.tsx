@@ -73,6 +73,16 @@ export default function ActaFusionClient() {
     }
   };
 
+  const handleSync = () => {
+    localStorage.removeItem('reverse-sides-db');
+    toast({
+        title: "Sincronizando...",
+        description: "La base de datos se volverá a cargar desde Firebase la próxima vez que visites una página.",
+    });
+    // We can just reload the page to trigger the database guard fetch
+    router.refresh();
+  };
+
   return (
     <main className="container mx-auto p-4 sm:p-6 lg:p-8 min-h-screen flex flex-col items-center">
         <header className="w-full text-center mb-10">
@@ -153,7 +163,7 @@ export default function ActaFusionClient() {
                     <CardTitle>Acciones Rápidas</CardTitle>
                     <CardDescription>Gestiona tu aplicación y tus datos desde aquí.</CardDescription>
                 </CardHeader>
-                <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <CardContent className="grid sm:grid-cols-2 lg:grid-cols-2 gap-4">
                      <Link href="/dashboard" className="w-full">
                         <Button variant="outline" className="w-full h-12">
                             <Combine className="mr-2 h-4 w-4" />
@@ -172,15 +182,13 @@ export default function ActaFusionClient() {
                             Modificar Metadata
                         </Button>
                     </Link>
-                    <Link href="/upload" className="w-full">
-                        <Button variant="outline" className="w-full h-12">
-                            <Upload className="mr-2 h-4 w-4" />
-                            Subir nueva Base de Datos
-                        </Button>
-                    </Link>
+                    <Button onClick={handleSync} variant="outline" className="w-full h-12">
+                        <Upload className="mr-2 h-4 w-4" />
+                        Sincronizar Base de Datos
+                    </Button>
                      <AlertDialog>
                         <AlertDialogTrigger asChild>
-                             <Button variant="destructive" className="w-full h-12">
+                             <Button variant="destructive" className="w-full h-12 col-span-full">
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Reiniciar Estadísticas
                             </Button>

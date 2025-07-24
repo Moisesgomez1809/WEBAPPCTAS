@@ -5,6 +5,8 @@ import { extractIssuingEntity as extractEntityFlow } from '@/ai/flows/extract-en
 import { extractDocumentDetails as extractDetailsFlow } from '@/ai/flows/extract-details';
 import { get, ref } from 'firebase/database';
 import { database } from '@/lib/firebase';
+import type { ReverseSideEntry } from '@/lib/types';
+
 
 export async function verifyUser(username: string, token: string): Promise<boolean> {
   try {
@@ -20,6 +22,41 @@ export async function verifyUser(username: string, token: string): Promise<boole
     console.error("Firebase verification failed:", error);
     return false;
   }
+}
+
+export async function fetchReverseSidesFromDB(): Promise<ReverseSideEntry[]> {
+  try {
+    const reversosRef = ref(database, 'REVERSOS');
+    const snapshot = await get(reversosRef);
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      // Transform the object { "Estado": "link", ... } to the array format the app expects
+      const entries: ReverseSideEntry[] = Object.entries(data).map(([key, value]) => ({
+        'entidad de registro': key,
+        'link del reverso para descarga directa': value as string,
+        'link de preview': value as string, // Assuming preview and download links are the same
+      }));
+      return entries;
+    }
+    return [];
+  } catch (error) {
+    console.error("Firebase reverse sides fetch failed:", error);
+    throw new Error("Could not fetch reverse sides database from Firebase.");
+  }
+}
+
+export async function fetchFrameFromDB(): Promise<string> {
+    try {
+        const frameRef = ref(database, 'MARCOS/MARCO DE ACTAS');
+        const snapshot = await get(frameRef);
+        if (snapshot.exists()) {
+            return snapshot.val();
+        }
+        throw new Error("Frame link not found in Firebase at MARCOS/MARCO DE ACTAS.");
+    } catch (error) {
+        console.error("Firebase frame fetch failed:", error);
+        throw new Error("Could not fetch frame link from Firebase.");
+    }
 }
 
 

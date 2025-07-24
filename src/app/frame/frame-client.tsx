@@ -5,8 +5,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, BarChart3, Frame, Combine, Stamp, FileCog } from 'lucide-react';
-import { getReversePdfAsDataUri, extractDocumentDetails } from '../actions';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, BarChart3, Frame, Combine, FileCog } from 'lucide-react';
+import { getReversePdfAsDataUri, extractDocumentDetails, fetchFrameFromDB } from '../actions';
 import { framePdfClient, mergePdfsClient, modifyReversePdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -78,18 +78,14 @@ export default function FrameClient() {
         setDb(parsedDb);
         const states = parsedDb
           .map(e => e['entidad de registro'])
-          .filter(name => normalizeString(name) !== 'marcoactas')
           .sort();
         setAvailableStates(states);
-      } else {
-        toast({ title: 'Base de datos no encontrada', description: 'Redirigiendo a la página de carga.', variant: 'destructive' });
-        router.replace('/upload');
       }
     } catch (e) {
       console.error("Failed to load database from localStorage", e);
-      toast({ title: 'Base de datos corrupta', description: 'Por favor, carga el archivo de la base de datos de nuevo.', variant: 'destructive' });
+      toast({ title: 'Base de datos corrupta', description: 'Intenta recargar la página para volver a sincronizar con Firebase.', variant: 'destructive' });
       localStorage.removeItem('reverse-sides-db');
-      router.replace('/upload');
+      router.refresh();
     }
   }, [router, toast]);
   
@@ -195,9 +191,9 @@ export default function FrameClient() {
 
     try {
       const framingPromise = (async () => {
-        const frameEntry = db.find(e => normalizeString(e['entidad de registro']) === 'marcoactas');
-        if (!frameEntry) throw new Error('No se encontró "MARCO ACTAS" en tu base de datos.');
-        const framePdfUri = await getReversePdfAsDataUri(frameEntry['link del reverso para descarga directa']);
+        const frameLink = await fetchFrameFromDB();
+        if (!frameLink) throw new Error('No se encontró el enlace del marco en Firebase.');
+        const framePdfUri = await getReversePdfAsDataUri(frameLink);
         setLoadingStep('framing');
         return framePdfClient(pdfDataUri, framePdfUri);
       })();

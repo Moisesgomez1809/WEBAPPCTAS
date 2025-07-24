@@ -33,7 +33,7 @@ export default function LoginPage() {
           title: "Inicio de Sesión Exitoso",
           description: "¡Bienvenido! Serás redirigido.",
         });
-        router.push('/upload');
+        router.push('/home'); // Redirect to home/dashboard page
       } else {
         toast({
           title: "Error de Inicio de Sesión",
