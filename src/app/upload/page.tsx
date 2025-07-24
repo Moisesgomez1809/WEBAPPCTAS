@@ -59,7 +59,7 @@ function UploadDatabasePage() {
         title: "¡Base de datos cargada con éxito!",
         description: `Se cargaron ${json.length} registros. Serás redirigido al panel de control.`,
       });
-      router.push('/dashboard'); // Changed from '/' to '/dashboard'
+      router.push('/home'); 
 
     } catch (e: any) {
       console.error(e);
