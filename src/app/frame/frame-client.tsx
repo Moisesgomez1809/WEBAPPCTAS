@@ -190,34 +190,33 @@ export default function FrameClient() {
     setLoadingStep('finding_frame');
 
     try {
-      const framingPromise = (async () => {
-        const frameLink = await fetchFrameFromDB();
+      // Fetch Frame and Reverse Side Data concurrently
+      const framePromise = fetchFrameFromDB().then(frameLink => {
         if (!frameLink) throw new Error('No se encontró el enlace del marco en Firebase.');
-        const framePdfUri = await getReversePdfAsDataUri(frameLink);
-        setLoadingStep('framing');
-        return framePdfClient(pdfDataUri, framePdfUri);
-      })();
+        return getReversePdfAsDataUri(frameLink);
+      });
+      
+      const detailsPromise = extractDocumentDetails({ pdfDataUri });
 
-      const reverseSidePromise = (async () => {
-        setLoadingStep('extractingDetails');
-        const { curp, electronicId } = await extractDocumentDetails({ pdfDataUri });
-        if (!curp || !electronicId) throw new Error("No se pudo extraer la CURP o el Identificador Electrónico.");
-        
-        setEntity(entityToUse);
-        
-        setLoadingStep('matching');
-        const reverseSideEntry = findReverseSide(entityToUse, db);
-        if (!reverseSideEntry) throw new Error(`No se pudo encontrar un reverso para "${entityToUse}".`);
-        const reversePdfDataUri = await getReversePdfAsDataUri(reverseSideEntry['link del reverso para descarga directa']);
+      const [framePdfUri, { curp, electronicId }] = await Promise.all([framePromise, detailsPromise]);
 
-        setLoadingStep('modifying');
-        const modifiedReversePdfUri = await modifyReversePdfClient(reversePdfDataUri, curp, electronicId);
-        
-        return { modifiedReversePdfUri, curp };
-      })();
-
-      const [framedPdf, { modifiedReversePdfUri, curp }] = await Promise.all([framingPromise, reverseSidePromise]);
+      if (!curp || !electronicId) throw new Error("No se pudo extraer la CURP o el Identificador Electrónico.");
       setExtractedCurp(curp);
+      setEntity(entityToUse);
+
+      setLoadingStep('matching');
+      const reverseSideEntry = findReverseSide(entityToUse, db);
+      if (!reverseSideEntry) throw new Error(`No se pudo encontrar un reverso para "${entityToUse}".`);
+      const reversePdfDataUri = await getReversePdfAsDataUri(reverseSideEntry['link del reverso para descarga directa']);
+
+      // Now do the PDF manipulations
+      setLoadingStep('framing');
+      const framedPdfPromise = framePdfClient(pdfDataUri, framePdfUri);
+
+      setLoadingStep('modifying');
+      const modifiedReversePdfPromise = modifyReversePdfClient(reversePdfDataUri, curp, electronicId);
+      
+      const [framedPdf, modifiedReversePdfUri] = await Promise.all([framedPdfPromise, modifiedReversePdfPromise]);
 
       setLoadingStep('merging');
       const mergedPdf = await mergePdfsClient(framedPdf, modifiedReversePdfUri);
