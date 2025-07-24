@@ -7,16 +7,19 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, Frame, Stamp, Wallet, BarChart3, FileCog } from 'lucide-react';
 import { extractIssuingEntity, getReversePdfAsDataUri, extractDocumentDetails } from '../actions';
-import { mergePdfsClient, modifyReversePdfClient } from '@/lib/pdf-utils';
+import { mergePdfsClient, modifyReversePdfClient, addFolioToPdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ReverseSideEntry } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import UtilitiesCalculator from '@/components/utilities-calculator';
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
-type LoadingStep = 'idle' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'done';
+type LoadingStep = 'idle' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'foliating' | 'done';
 
 const loadingMessages: Record<LoadingStep, string> = {
   idle: 'Esperando para empezar...',
@@ -24,6 +27,7 @@ const loadingMessages: Record<LoadingStep, string> = {
   matching: 'Buscando el reverso correcto en tu base de datos...',
   modifying: 'Reemplazando el código QR en el reverso...',
   merging: 'Fusionando los documentos en un solo PDF...',
+  foliating: 'Añadiendo el folio y código de barras...',
   done: '¡Tu documento está listo!',
 };
 
@@ -73,6 +77,7 @@ export default function DashboardClient() {
   const [db, setDb] = useState<ReverseSideEntry[]>([]);
   const [availableStates, setAvailableStates] = useState<string[]>([]);
   const [extractedCurp, setExtractedCurp] = useState<string | null>(null);
+  const [addFolio, setAddFolio] = useState(false);
   
   const [providerCost, setProviderCost] = useState('');
   const [clientCost, setClientCost] = useState('');
@@ -125,6 +130,7 @@ export default function DashboardClient() {
     setEntity(null);
     setManualEntity("");
     setExtractedCurp(null);
+    setAddFolio(false);
     setProviderCost('');
     setClientCost('');
   }, [previewUrl]);
@@ -187,9 +193,14 @@ export default function DashboardClient() {
         });
       }
 
-      const currentCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
-      localStorage.setItem('fusionCount', (currentCount + 1).toString());
+      const currentFusionCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
+      localStorage.setItem('fusionCount', (currentFusionCount + 1).toString());
 
+      if (addFolio) {
+        const currentFolioCount = parseInt(localStorage.getItem('folioCount') || '0', 10);
+        localStorage.setItem('folioCount', (currentFolioCount + 1).toString());
+      }
+      
       const link = document.createElement('a');
       link.href = combinedPdfUrl;
       link.download = extractedCurp ? `${extractedCurp}.pdf` : 'acta-fusionada.pdf';
@@ -246,16 +257,21 @@ export default function DashboardClient() {
       const modifiedReversePdfUri = await modifyReversePdfClient(reversePdfDataUri, curp, electronicId);
 
       setLoadingStep('merging');
-      const mergedPdf = await mergePdfsClient(originalPdfUrl, modifiedReversePdfUri);
+      let finalPdf = await mergePdfsClient(originalPdfUrl, modifiedReversePdfUri);
 
-      setCombinedPdfUrl(mergedPdf);
-      await setMergedPreview(mergedPdf);
+      if (addFolio) {
+        setLoadingStep('foliating');
+        finalPdf = await addFolioToPdfClient(finalPdf);
+      }
+
+      setCombinedPdfUrl(finalPdf);
+      await setMergedPreview(finalPdf);
 
       setLoadingStep('done');
       setStatus('success');
       toast({
         title: "¡Éxito!",
-        description: "Tu PDF ha sido creado con el nuevo código QR.",
+        description: `Tu PDF ha sido creado ${addFolio ? 'y foliado' : ''} correctamente.`,
       });
 
     } catch (e: any) {
@@ -319,6 +335,10 @@ export default function DashboardClient() {
                   {availableStates.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
                 </SelectContent>
               </Select>
+               <div className="flex items-center space-x-2 pt-4">
+                  <Switch id="folio-switch" checked={addFolio} onCheckedChange={setAddFolio} />
+                  <Label htmlFor="folio-switch">¿Añadir Folio?</Label>
+               </div>
               <Button onClick={() => processFusion(manualEntity)} disabled={!manualEntity} className="w-full">
                 <Sparkles className="mr-2 h-4 w-4" /> Fusionar Documentos
               </Button>
