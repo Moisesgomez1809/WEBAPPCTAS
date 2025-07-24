@@ -78,17 +78,6 @@ function UploadDatabasePage() {
             <CardDescription>
               Por favor, sube el archivo XLSX que contiene los enlaces a los reversos de las actas de nacimiento.
             </CardDescription>
-             <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-4 right-4"
-                onClick={() => {
-                  logout();
-                  router.push('/');
-                }}
-              >
-                <LogOut className="h-5 w-5" />
-              </Button>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex w-full items-center justify-center">
