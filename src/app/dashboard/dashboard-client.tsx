@@ -384,12 +384,6 @@ export default function DashboardClient() {
                     <Frame className="ml-2 h-4 w-4" />
                 </Button>
             </Link>
-            <Link href="/folio">
-                <Button variant="outline">
-                    Foliar Documento
-                    <Stamp className="ml-2 h-4 w-4" />
-                </Button>
-            </Link>
             <Link href="/metadata">
               <Button variant="outline">
                   Modificar Metadata

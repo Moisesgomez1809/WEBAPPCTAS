@@ -166,12 +166,6 @@ export default function ActaFusionClient() {
                             Ir a Enmarcar
                         </Button>
                     </Link>
-                    <Link href="/folio" className="w-full">
-                        <Button variant="outline" className="w-full h-12">
-                            <Stamp className="mr-2 h-4 w-4" />
-                            Ir a Foliar
-                        </Button>
-                    </Link>
                     <Link href="/metadata" className="w-full">
                         <Button variant="outline" className="w-full h-12">
                             <FileCog className="mr-2 h-4 w-4" />

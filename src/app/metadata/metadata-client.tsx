@@ -241,12 +241,6 @@ export default function MetadataClient() {
                     Enmarcar Acta
                 </Button>
             </Link>
-             <Link href="/folio">
-                <Button variant="outline">
-                    <Stamp className="mr-2 h-4 w-4" />
-                    Foliar Documento
-                </Button>
-            </Link>
             <Link href="/">
                 <Button variant="secondary">
                     Ver Dashboard
