@@ -190,7 +190,7 @@ export default function FrameClient() {
     setLoadingStep('finding_frame');
 
     try {
-      // Fetch Frame and Reverse Side Data concurrently
+      // Concurrently fetch frame, details, and reverse side
       const framePromise = fetchFrameFromDB().then(frameLink => {
         if (!frameLink) throw new Error('No se encontró el enlace del marco en Firebase.');
         return getReversePdfAsDataUri(frameLink);
@@ -198,18 +198,19 @@ export default function FrameClient() {
       
       const detailsPromise = extractDocumentDetails({ pdfDataUri });
 
-      const [framePdfUri, { curp, electronicId }] = await Promise.all([framePromise, detailsPromise]);
+      const reverseSideEntry = findReverseSide(entityToUse, db);
+      if (!reverseSideEntry) {
+          throw new Error(`No se pudo encontrar un reverso para "${entityToUse}".`);
+      }
+      const reversePdfPromise = getReversePdfAsDataUri(reverseSideEntry['link del reverso para descarga directa']);
+
+      const [framePdfUri, { curp, electronicId }, reversePdfDataUri] = await Promise.all([framePromise, detailsPromise, reversePdfPromise]);
 
       if (!curp || !electronicId) throw new Error("No se pudo extraer la CURP o el Identificador Electrónico.");
       setExtractedCurp(curp);
       setEntity(entityToUse);
 
-      setLoadingStep('matching');
-      const reverseSideEntry = findReverseSide(entityToUse, db);
-      if (!reverseSideEntry) throw new Error(`No se pudo encontrar un reverso para "${entityToUse}".`);
-      const reversePdfDataUri = await getReversePdfAsDataUri(reverseSideEntry['link del reverso para descarga directa']);
-
-      // Now do the PDF manipulations
+      // Now do the PDF manipulations concurrently
       setLoadingStep('framing');
       const framedPdfPromise = framePdfClient(pdfDataUri, framePdfUri);
 
