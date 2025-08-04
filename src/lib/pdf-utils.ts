@@ -180,7 +180,7 @@ export async function framePdfClient(originalPdfUri: string, framePdfUri: string
         // **AQUÍ PUEDES AJUSTAR**
         // Reducir los valores de los márgenes hará el documento MÁS GRANDE.
         // Aumentar los valores de los márgenes hará el documento MÁS PEQUEÑO.
-        const pageMargin = { top: 15, bottom: 15, left: 15, right: 15 };
+        const pageMargin = { top: 20, bottom: 18, left: 5, right: 9 };
 
         const embedWidth = frameWidth - pageMargin.left - pageMargin.right;
         const embedHeight = frameHeight - pageMargin.top - pageMargin.bottom;
@@ -191,7 +191,7 @@ export async function framePdfClient(originalPdfUri: string, framePdfUri: string
         // Un valor más bajo en `y` mueve el documento hacia abajo.
         framePage.drawPage(embeddedPage, {
             x: pageMargin.left,
-            y: pageMargin.bottom + 10, // Le sumé 10 para subirlo un poco
+            y: pageMargin.bottom + 7, // Le sumé 10 para subirlo un poco
             width: embedWidth,
             height: embedHeight,
         });
