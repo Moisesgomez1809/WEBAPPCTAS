@@ -214,7 +214,7 @@ export async function modifyMetadataAndResizeClient(pdfUri: string): Promise<str
         // Clear metadata and set specific producer
         newDoc.setTitle('');
         newDoc.setAuthor('');
-        new.setSubject('');
+        newDoc.setSubject('');
         newDoc.setKeywords([]);
         newDoc.setCreator('');
         newDoc.setProducer('Oracle XML Publisher 5.6.2');
