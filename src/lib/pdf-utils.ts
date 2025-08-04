@@ -171,26 +171,27 @@ export async function framePdfClient(originalPdfUri: string, framePdfUri: string
 
         const framePage = frameDoc.getPage(0);
         
-        // Get the first page of the original document
         const originalPage = originalDoc.getPage(0);
 
-        // Embed the original page into the frame document
         const embeddedPage = await frameDoc.embedPage(originalPage);
 
         const { width: frameWidth, height: frameHeight } = framePage.getSize();
         
-        // Adjust these values to change the size and position of the embedded page.
-        // Increasing margins makes the embedded page smaller.
-        // Decreasing margins makes it bigger.
-        const pageMargin = { top: 20, bottom: 20, left: 20, right: 20 };
+        // **AQUÍ PUEDES AJUSTAR**
+        // Reducir los valores de los márgenes hará el documento MÁS GRANDE.
+        // Aumentar los valores de los márgenes hará el documento MÁS PEQUEÑO.
+        const pageMargin = { top: 15, bottom: 15, left: 15, right: 15 };
 
         const embedWidth = frameWidth - pageMargin.left - pageMargin.right;
         const embedHeight = frameHeight - pageMargin.top - pageMargin.bottom;
 
-        // Draw the embedded page onto the frame page
+        // **Y AQUÍ TAMBIÉN**
+        // Para subir o bajar el documento, ajusta `pageMargin.bottom`.
+        // Un valor más alto en `y` mueve el documento hacia arriba.
+        // Un valor más bajo en `y` mueve el documento hacia abajo.
         framePage.drawPage(embeddedPage, {
             x: pageMargin.left,
-            y: pageMargin.bottom,
+            y: pageMargin.bottom + 10, // Le sumé 10 para subirlo un poco
             width: embedWidth,
             height: embedHeight,
         });
@@ -213,7 +214,7 @@ export async function modifyMetadataAndResizeClient(pdfUri: string): Promise<str
         // Clear metadata and set specific producer
         newDoc.setTitle('');
         newDoc.setAuthor('');
-        newDoc.setSubject('');
+        new.setSubject('');
         newDoc.setKeywords([]);
         newDoc.setCreator('');
         newDoc.setProducer('Oracle XML Publisher 5.6.2');
