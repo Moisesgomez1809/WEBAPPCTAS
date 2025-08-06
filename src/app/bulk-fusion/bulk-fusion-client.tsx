@@ -17,7 +17,7 @@ import Link from 'next/link';
 interface FileQueueItem {
   id: string;
   file: File;
-  state: string;
+  state: string; // State is now part of the item from the beginning
   status: 'pending' | 'processing' | 'success' | 'error';
   resultUrl?: string;
   error?: string;
@@ -29,6 +29,7 @@ function normalizeString(str: string): string {
 }
 
 function findReverseSide(entity: string, db: ReverseSideEntry[]): ReverseSideEntry | null {
+    if (!entity) return null;
     const normalizedEntity = normalizeString(entity);
     if (normalizedEntity.includes('distritofederal') || normalizedEntity.includes('ciudadmexico')) {
         return db.find(e => normalizeString(e['entidad de registro']).includes('distritofederal')) || null;
@@ -40,9 +41,7 @@ function findReverseSide(entity: string, db: ReverseSideEntry[]): ReverseSideEnt
 }
 
 export default function BulkFusionClient() {
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [fileQueue, setFileQueue] = useState<FileQueueItem[]>([]);
-  const [selectedState, setSelectedState] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
   const [db, setDb] = useState<ReverseSideEntry[]>([]);
   const [availableStates, setAvailableStates] = useState<string[]>([]);
@@ -70,27 +69,18 @@ export default function BulkFusionClient() {
       if (newFiles.length !== files.length) {
         toast({ title: 'Archivos Inválidos', description: 'Algunos archivos no eran PDF y fueron omitidos.', variant: 'destructive' });
       }
-      setPendingFiles(prev => [...prev, ...newFiles]);
+      const newQueueItems: FileQueueItem[] = newFiles.map(file => ({
+        id: `${file.name}-${Math.random()}`,
+        file,
+        state: "", // User must select this
+        status: 'pending',
+      }));
+      setFileQueue(prev => [...prev, ...newQueueItems]);
     }
   };
 
-  const handleAddToList = () => {
-    if (pendingFiles.length === 0) {
-      toast({ title: 'No hay archivos', description: 'Arrastra o selecciona archivos PDF para agregar.'});
-      return;
-    }
-    if (!selectedState) {
-      toast({ title: 'Estado no seleccionado', description: 'Por favor, selecciona un estado para los archivos.'});
-      return;
-    }
-    const newQueueItems: FileQueueItem[] = pendingFiles.map(file => ({
-      id: `${file.name}-${Math.random()}`,
-      file,
-      state: selectedState,
-      status: 'pending',
-    }));
-    setFileQueue(prev => [...prev, ...newQueueItems]);
-    setPendingFiles([]); // Clear pending files after adding them to the queue
+  const handleStateChange = (id: string, state: string) => {
+    setFileQueue(prev => prev.map(item => item.id === id ? { ...item, state } : item));
   };
   
   const handleRemoveFromQueue = (id: string) => {
@@ -103,6 +93,12 @@ export default function BulkFusionClient() {
       toast({ title: 'No hay archivos pendientes', description: 'Agrega archivos a la cola o ya se han procesado todos.' });
       return;
     }
+    const unconfiguredItems = itemsToProcess.filter(item => !item.state);
+    if (unconfiguredItems.length > 0) {
+        toast({ title: 'Faltan estados', description: `Por favor, selecciona un estado para ${unconfiguredItems.length} archivo(s) en la lista.`, variant: 'destructive' });
+        return;
+    }
+    
     setIsProcessing(true);
 
     const promises = itemsToProcess.map(async (item) => {
@@ -141,7 +137,6 @@ export default function BulkFusionClient() {
       }
     });
     
-    // Process one by one and update the UI
     for (const promise of promises) {
         const result = await promise;
         setFileQueue(prev => prev.map(i => i.id === result.id ? result : i));
@@ -200,105 +195,87 @@ export default function BulkFusionClient() {
         </div>
       </header>
       
-      <div className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="flex flex-col space-y-4">
-            <Card>
-                <CardHeader>
-                    <CardTitle>1. Cargar Archivos</CardTitle>
-                    <CardDescription>Arrastra y suelta o selecciona múltiples archivos PDF.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div
-                        {...handleDragEvents}
-                        className={`relative flex flex-col items-center justify-center w-full p-10 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/70 hover:bg-secondary'}`}
-                        onClick={() => document.getElementById('file-upload')?.click()}
-                    >
-                        <FileUp className="w-12 h-12 text-primary mb-4" />
-                        <h3 className="text-lg font-semibold text-foreground">Arrastra y suelta tus actas</h3>
-                        <p className="text-muted-foreground mt-1">o haz clic para seleccionar archivos</p>
-                        <input id="file-upload" type="file" multiple className="hidden" accept="application/pdf" onChange={(e) => handleFileChange(e.target.files)} />
-                    </div>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>2. Configurar y Agregar a la Cola</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                     <Select onValueChange={setSelectedState} value={selectedState}>
-                        <SelectTrigger><SelectValue placeholder="Selecciona un estado para el lote..." /></SelectTrigger>
-                        <SelectContent>
-                            {availableStates.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    {pendingFiles.length > 0 && (
-                        <Alert>
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>{pendingFiles.length} archivo(s) listo(s) para agregar</AlertTitle>
-                            <AlertDescription>
-                                Los archivos se agregarán a la cola con el estado: <strong>{selectedState || '(Ninguno seleccionado)'}</strong>.
-                            </AlertDescription>
-                        </Alert>
-                    )}
-                </CardContent>
-                <CardFooter>
-                     <Button onClick={handleAddToList} disabled={pendingFiles.length === 0 || !selectedState} className="w-full">
-                        <Files className="mr-2 h-4 w-4" /> Agregar {pendingFiles.length > 0 ? pendingFiles.length : ''} archivo(s) a la lista
-                    </Button>
-                </CardFooter>
-            </Card>
-        </div>
-        
-        <div className="lg:h-auto">
-          <Card className="h-full flex flex-col">
+      <div className="w-full max-w-6xl mx-auto flex flex-col space-y-8">
+        <Card>
             <CardHeader>
-              <CardTitle>3. Lista de Procesamiento</CardTitle>
-              <CardDescription>
-                Archivos listos para ser procesados. Presiona "Procesar Lista" cuando estés listo.
-              </CardDescription>
+                <CardTitle>1. Cargar Archivos</CardTitle>
+                <CardDescription>Arrastra y suelta o selecciona múltiples archivos PDF. Aparecerán en la lista de abajo.</CardDescription>
             </CardHeader>
-            <CardContent className="flex-grow overflow-y-auto">
-                <div className="w-full h-full bg-background rounded-lg border">
-                    {fileQueue.length > 0 ? (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Archivo</TableHead>
-                                    <TableHead>Estado</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Acción</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {fileQueue.map(item => (
-                                    <TableRow key={item.id}>
-                                        <TableCell className="font-medium truncate max-w-[200px]">{item.file.name}</TableCell>
-                                        <TableCell>{item.state}</TableCell>
-                                        <TableCell>{renderStatusIcon(item)}</TableCell>
-                                        <TableCell className="text-right">{renderActionCell(item)}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    ) : (
-                         <div className="text-center text-muted-foreground p-8 h-full flex flex-col justify-center items-center">
-                            <Files className="w-20 h-20 mx-auto mb-4"/>
-                            <p>La cola de procesamiento está vacía</p>
-                        </div>
-                    )}
+            <CardContent>
+                <div
+                    {...handleDragEvents}
+                    className={`relative flex flex-col items-center justify-center w-full p-10 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/70 hover:bg-secondary'}`}
+                    onClick={() => document.getElementById('file-upload')?.click()}
+                >
+                    <FileUp className="w-12 h-12 text-primary mb-4" />
+                    <h3 className="text-lg font-semibold text-foreground">Arrastra y suelta tus actas</h3>
+                    <p className="text-muted-foreground mt-1">o haz clic para seleccionar archivos</p>
+                    <input id="file-upload" type="file" multiple className="hidden" accept="application/pdf" onChange={(e) => handleFileChange(e.target.files)} />
                 </div>
             </CardContent>
-            <CardFooter className="flex-col space-y-2 pt-6">
-                 <Button onClick={handleProcessQueue} disabled={isProcessing || fileQueue.every(i => i.status !== 'pending')} className="w-full">
-                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4" />}
-                    {isProcessing ? 'Procesando...' : 'Procesar Lista'}
-                </Button>
-                <Button onClick={() => setFileQueue([])} variant="destructive" className="w-full" disabled={isProcessing}>
-                    <Trash2 className="mr-2 h-4 w-4" /> Limpiar Lista
-                </Button>
-            </CardFooter>
-          </Card>
-        </div>
+        </Card>
+        
+        <Card className="h-full flex flex-col">
+        <CardHeader>
+            <CardTitle>2. Lista de Procesamiento</CardTitle>
+            <CardDescription>
+            Asigna un estado a cada archivo y presiona "Procesar Lista" cuando estés listo.
+            </CardDescription>
+        </CardHeader>
+        <CardContent className="flex-grow overflow-y-auto">
+            <div className="w-full h-full bg-background rounded-lg border">
+                {fileQueue.length > 0 ? (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[40%]">Archivo</TableHead>
+                                <TableHead className="w-[30%]">Estado</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Acción</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {fileQueue.map(item => (
+                                <TableRow key={item.id}>
+                                    <TableCell className="font-medium truncate max-w-[200px]">{item.file.name}</TableCell>
+                                    <TableCell>
+                                        <Select 
+                                            onValueChange={(value) => handleStateChange(item.id, value)} 
+                                            value={item.state}
+                                            disabled={item.status !== 'pending' || isProcessing}
+                                        >
+                                            <SelectTrigger className="h-9">
+                                                <SelectValue placeholder="Selecciona..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {availableStates.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </TableCell>
+                                    <TableCell>{renderStatusIcon(item)}</TableCell>
+                                    <TableCell className="text-right">{renderActionCell(item)}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                ) : (
+                        <div className="text-center text-muted-foreground p-8 h-full flex flex-col justify-center items-center">
+                        <Files className="w-20 h-20 mx-auto mb-4"/>
+                        <p>La cola de procesamiento está vacía</p>
+                    </div>
+                )}
+            </div>
+        </CardContent>
+        <CardFooter className="flex-col space-y-2 pt-6">
+                <Button onClick={handleProcessQueue} disabled={isProcessing || fileQueue.every(i => i.status !== 'pending')} className="w-full">
+                {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4" />}
+                {isProcessing ? 'Procesando...' : 'Procesar Lista'}
+            </Button>
+            <Button onClick={() => setFileQueue([])} variant="destructive" className="w-full" disabled={isProcessing}>
+                <Trash2 className="mr-2 h-4 w-4" /> Limpiar Lista
+            </Button>
+        </CardFooter>
+        </Card>
       </div>
     </main>
   );
