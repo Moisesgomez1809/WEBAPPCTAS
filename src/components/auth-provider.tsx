@@ -25,7 +25,6 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       if (storedUser) {
         setUser(JSON.parse(storedUser));
       } else {
-        // If there's no user, ensure we are offline.
         goOffline(database);
       }
     } catch (e) {
@@ -41,16 +40,26 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     const userData = { username, token };
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
-    // The database guard will handle going online implicitly.
+    // The database guard will implicitly handle going online when it needs to fetch data.
+    // No need to call goOnline() here, to prevent multiple connections on hot-reloads.
   };
 
   const logout = () => {
-    // First, explicitly close the Firebase connection.
+    // Explicitly close the Firebase connection.
     goOffline(database);
-    // Then, clear user data from state and local storage.
+    
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('reverse-sides-db'); // Also clear the DB on logout
+    localStorage.removeItem('fusionCount');
+    localStorage.removeItem('folioCount');
+    localStorage.removeItem('frameCount');
+    localStorage.removeItem('metadataCount');
+    localStorage.removeItem('totalProfit');
+    localStorage.removeItem('totalProviderCost');
+    localStorage.removeItem('weeklyGoal');
+    localStorage.removeItem('isGoalLocked');
+
   };
 
   return (
