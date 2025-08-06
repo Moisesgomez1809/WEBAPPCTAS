@@ -120,6 +120,15 @@ export default function BulkFusionClient() {
   const handleRemoveFromQueue = (id: string) => {
     setProcessingQueue(prev => prev.filter(item => item.id !== id));
   };
+  
+  const downloadFile = (url: string, name: string) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleProcessQueue = async () => {
     const itemsToProcess = processingQueue.filter(item => item.status === 'pending');
@@ -129,6 +138,7 @@ export default function BulkFusionClient() {
     }
     
     setIsProcessing(true);
+    const successfulDownloads: { url: string; name: string }[] = [];
 
     const promises = itemsToProcess.map(async (item) => {
       try {
@@ -169,10 +179,19 @@ export default function BulkFusionClient() {
     for (const promise of promises) {
         const result = await promise;
         setProcessingQueue(prev => prev.map(i => i.id === result.id ? result : i));
+        if (result.status === 'success' && result.resultUrl) {
+            successfulDownloads.push({
+                url: result.resultUrl,
+                name: `${result.curp || result.file.name.replace('.pdf', '')}.pdf`
+            });
+        }
     }
 
     setIsProcessing(false);
-    toast({ title: 'Proceso Completado', description: 'Se han procesado todos los archivos pendientes de la cola.' });
+    toast({ title: 'Proceso Completado', description: 'Se han procesado todos los archivos. Las descargas comenzarán ahora.' });
+    
+    // Automatically download all successful files.
+    successfulDownloads.forEach(file => downloadFile(file.url, file.name));
   };
   
   const handleDragEvents = {
@@ -197,9 +216,9 @@ export default function BulkFusionClient() {
   const renderActionCell = (item: QueueItem) => {
     if (item.status === 'success' && item.resultUrl) {
       return (
-        <a href={item.resultUrl} download={`${item.curp || item.file.name.replace('.pdf','')}.pdf`}>
-          <Button variant="outline" size="sm"><Download className="h-4 w-4"/></Button>
-        </a>
+        <Button variant="outline" size="sm" onClick={() => downloadFile(item.resultUrl!, `${item.curp || item.file.name.replace('.pdf','')}.pdf`)}>
+            <Download className="h-4 w-4"/>
+        </Button>
       );
     }
     return (
@@ -342,3 +361,5 @@ export default function BulkFusionClient() {
     </main>
   );
 }
+
+    
