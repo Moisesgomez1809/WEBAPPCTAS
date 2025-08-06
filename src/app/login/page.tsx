@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, LogIn } from 'lucide-react';
 import { verifyUser } from '../actions';
-import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -56,15 +55,15 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-secondary p-4 sm:p-6 lg:p-8">
-      <div className="w-full max-w-4xl overflow-hidden rounded-2xl shadow-2xl md:grid md:grid-cols-2">
-        <div className="bg-card p-8 sm:p-12">
-           <div className="text-center md:text-left">
-              <LogIn className="mx-auto md:mx-0 h-10 w-10 text-primary" />
-              <CardTitle className="text-3xl font-headline mt-4">Iniciar Sesión</CardTitle>
-              <CardDescription className="mt-2">
-                Ingresa tus credenciales para acceder a la aplicación.
-              </CardDescription>
-           </div>
+      <Card className="w-full max-w-md shadow-2xl">
+        <CardHeader className="text-center">
+            <LogIn className="mx-auto h-10 w-10 text-primary" />
+            <CardTitle className="text-3xl font-headline mt-4">Iniciar Sesión</CardTitle>
+            <CardDescription className="mt-2">
+            Ingresa tus credenciales para acceder a la aplicación.
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
           <form onSubmit={handleLogin} className="mt-8 space-y-6">
             <div className="space-y-2">
               <Label htmlFor="username">Usuario</Label>
@@ -76,7 +75,7 @@ export default function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 disabled={loading}
-                className="bg-secondary"
+                className="bg-background"
               />
             </div>
             <div className="space-y-2">
@@ -89,7 +88,7 @@ export default function LoginPage() {
                 onChange={(e) => setToken(e.target.value)}
                 required
                 disabled={loading}
-                 className="bg-secondary"
+                 className="bg-background"
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
@@ -101,17 +100,8 @@ export default function LoginPage() {
               {loading ? 'Verificando...' : 'Acceder'}
             </Button>
           </form>
-        </div>
-        <div className="hidden md:flex items-center justify-center bg-card p-8">
-            <Image
-                src="https://scontent.fjal3-1.fna.fbcdn.net/v/t39.30808-6/393808144_267627972934220_4209575570432257648_n.jpg?_nc_cat=103&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=lkU5Ttg0fEoQ7kNvwHA6ZPL&_nc_oc=AdlLngWkcn4a98BdbmYssZYhTAXWi-si8acbB-iii4M5I7poc9uwLPPQS3PdeRzmuHQlQDXahr_crMgX9qxGb5L5&_nc_zt=23&_nc_ht=scontent.fjal3-1.fna&_nc_gid=Tb7Bv_rAnDuOj1ldWy-Hyw&oh=00_AfW2SEF4rVZT2b41LiOQRJdj7ufpTz1zB9gn_KILdLZPzQ&oe=68988A13"
-                alt="Logo"
-                width={300}
-                height={300}
-                className="rounded-lg object-cover"
-            />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </main>
   );
 }
