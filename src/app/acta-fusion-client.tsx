@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Files, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Files, ShoppingCart, Lock, Unlock, TrendingUp } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -20,6 +20,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
+import { Input } from '@/components/ui/input';
+import {
+  RadialBarChart,
+  RadialBar,
+  PolarAngleAxis,
+} from "recharts";
+import type { ChartConfig } from "@/components/ui/chart";
 
 
 interface Stats {
@@ -30,6 +37,10 @@ interface Stats {
 
 export default function ActaFusionClient() {
   const [stats, setStats] = useState<Stats>({ total: 0, profit: 0, providerCost: 0 });
+  const [weeklyGoal, setWeeklyGoal] = useState<number | null>(null);
+  const [isGoalLocked, setIsGoalLocked] = useState(false);
+  const [initialTotalForGoal, setInitialTotalForGoal] = useState(0);
+
   const router = useRouter();
   const { toast } = useToast();
 
@@ -47,6 +58,15 @@ export default function ActaFusionClient() {
       profit,
       providerCost,
     });
+
+    // Load weekly goal state
+    const savedGoal = localStorage.getItem('weeklyGoal');
+    const savedIsLocked = localStorage.getItem('isGoalLocked');
+    const savedInitialTotal = localStorage.getItem('initialTotalForGoal');
+
+    if (savedGoal) setWeeklyGoal(parseInt(savedGoal, 10));
+    if (savedIsLocked) setIsGoalLocked(JSON.parse(savedIsLocked));
+    if (savedInitialTotal) setInitialTotalForGoal(parseInt(savedInitialTotal, 10));
   }, []);
 
   const handleResetStats = () => {
@@ -57,7 +77,15 @@ export default function ActaFusionClient() {
         localStorage.setItem('metadataCount', '0');
         localStorage.setItem('totalProfit', '0');
         localStorage.setItem('totalProviderCost', '0');
+        localStorage.removeItem('weeklyGoal');
+        localStorage.removeItem('isGoalLocked');
+        localStorage.removeItem('initialTotalForGoal');
+
         setStats({ total: 0, profit: 0, providerCost: 0 });
+        setWeeklyGoal(null);
+        setIsGoalLocked(false);
+        setInitialTotalForGoal(0);
+        
         toast({
             title: "Estadísticas Reiniciadas",
             description: "Los contadores han sido puestos a cero.",
@@ -76,7 +104,37 @@ export default function ActaFusionClient() {
 
   const totalTrámites = stats.total;
   const maxTrámites = 1000;
-  const progressPercentage = (totalTrámites / maxTrámites) * 100;
+  const progressPercentage = totalTrámites > 0 ? (totalTrámites / maxTrámites) * 100 : 0;
+
+  const weeklyTransactions = Math.max(0, stats.total - initialTotalForGoal);
+  const remainingForGoal = weeklyGoal ? Math.max(0, weeklyGoal - weeklyTransactions) : 0;
+  
+  const chartData = [
+    { name: "trámites", value: weeklyTransactions, fill: "hsl(var(--primary))" },
+  ];
+  const chartConfig = {
+    trámites: { label: "Trámites", color: "hsl(var(--primary))" },
+  } satisfies ChartConfig;
+
+  const handleGoalLockToggle = () => {
+    if (isGoalLocked) {
+      // Unlock
+      setIsGoalLocked(false);
+      localStorage.setItem('isGoalLocked', 'false');
+    } else {
+      // Lock
+      if (weeklyGoal && weeklyGoal > 0) {
+        setIsGoalLocked(true);
+        setInitialTotalForGoal(stats.total);
+        localStorage.setItem('weeklyGoal', weeklyGoal.toString());
+        localStorage.setItem('isGoalLocked', 'true');
+        localStorage.setItem('initialTotalForGoal', stats.total.toString());
+        toast({ title: "¡Meta guardada!", description: "A trabajar para alcanzarla." });
+      } else {
+        toast({ title: "Meta Inválida", description: "Por favor, introduce un número mayor que cero.", variant: "destructive" });
+      }
+    }
+  };
 
 
   return (
@@ -89,7 +147,7 @@ export default function ActaFusionClient() {
         </header>
 
         <div className="w-full max-w-5xl space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                  <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Compra a Proveedor</CardTitle>
@@ -129,6 +187,77 @@ export default function ActaFusionClient() {
                     </CardContent>
                 </Card>
             </div>
+            
+             <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 col-span-full">
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center space-x-2">
+                            <TrendingUp className="h-6 w-6 text-primary"/>
+                            <CardTitle>Meta de la Semana</CardTitle>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                             <Input
+                                type="number"
+                                placeholder="Tu meta"
+                                className="w-24 h-8"
+                                value={weeklyGoal || ''}
+                                onChange={(e) => setWeeklyGoal(Number(e.target.value))}
+                                disabled={isGoalLocked}
+                            />
+                            <Button variant="ghost" size="icon" onClick={handleGoalLockToggle}>
+                                {isGoalLocked ? <Lock className="h-5 w-5 text-primary" /> : <Unlock className="h-5 w-5 text-muted-foreground" />}
+                            </Button>
+                        </div>
+                    </div>
+                     <CardDescription>Establece un objetivo semanal y monitorea tu progreso.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center justify-center">
+                   {isGoalLocked && weeklyGoal ? (
+                        <div className="w-full flex flex-col items-center">
+                            <div className="h-[200px] w-full relative">
+                                <RadialBarChart
+                                    data={chartData}
+                                    barSize={20}
+                                    startAngle={-210}
+                                    endAngle={30}
+                                    innerRadius={80}
+                                    cy="55%"
+                                    outerRadius={110}
+                                    barCategoryGap={0}
+                                    viewBox={{ x: 0, y: 0, width: 300, height: 200 }}
+                                >
+                                <PolarAngleAxis
+                                    type="number"
+                                    domain={[0, weeklyGoal]}
+                                    dataKey="value"
+                                    angleAxisId={0}
+                                    tick={false}
+                                />
+                                <RadialBar
+                                    background={{ fill: "hsl(var(--secondary))" }}
+                                    dataKey="value"
+                                    angleAxisId={0}
+                                    cornerRadius={10}
+                                />
+                                </RadialBarChart>
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center mt-2">
+                                     <p className="text-4xl font-bold">{weeklyTransactions}</p>
+                                     <p className="text-xs text-muted-foreground">de {weeklyGoal}</p>
+                                </div>
+                            </div>
+                             <p className="text-center mt-4 text-muted-foreground font-medium">
+                                {remainingForGoal > 0
+                                ? `¡Vamos, sí se puede! Te faltan ${remainingForGoal} para llegar a tu meta.`
+                                : "¡Felicidades, has alcanzado tu meta semanal!"}
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="text-center text-muted-foreground p-8">
+                            <p>Define una meta y bloquéala para empezar a rastrear.</p>
+                        </div>
+                    )}
+                </CardContent>
+             </Card>
 
             <Card>
                 <CardHeader>
@@ -186,3 +315,5 @@ export default function ActaFusionClient() {
     </main>
   );
 }
+
+    

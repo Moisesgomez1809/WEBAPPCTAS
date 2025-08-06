@@ -362,4 +362,8 @@ export {
   ChartLegend,
   ChartLegendContent,
   ChartStyle,
+  // Re-export zod objects
+  RechartsPrimitive
 }
+
+    
