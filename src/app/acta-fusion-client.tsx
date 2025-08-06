@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog } from 'lucide-react';
+import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Files } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -160,6 +160,12 @@ export default function ActaFusionClient() {
                             Ir a Acta Fusion
                         </Button>
                     </Link>
+                     <Link href="/bulk-fusion" className="w-full">
+                        <Button variant="outline" className="w-full h-12">
+                            <Files className="mr-2 h-4 w-4" />
+                            Ir a Fusión Masiva
+                        </Button>
+                    </Link>
                     <Link href="/frame" className="w-full">
                         <Button variant="outline" className="w-full h-12">
                             <Frame className="mr-2 h-4 w-4" />
@@ -198,3 +204,5 @@ export default function ActaFusionClient() {
     </main>
   );
 }
+
+    

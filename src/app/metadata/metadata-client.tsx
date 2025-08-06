@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, BarChart3, Combine, Frame, Stamp, FileCog } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, BarChart3, Combine, Frame, Stamp, FileCog, Files } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
 import { modifyMetadataAndResizeClient } from '@/lib/pdf-utils';
@@ -235,6 +235,12 @@ export default function MetadataClient() {
                     Ir a Acta Fusion
                 </Button>
             </Link>
+            <Link href="/bulk-fusion">
+                <Button variant="outline">
+                    <Files className="mr-2 h-4 w-4" />
+                    Ir a Fusión Masiva
+                </Button>
+            </Link>
             <Link href="/frame">
                 <Button variant="outline">
                     <Frame className="mr-2 h-4 w-4" />
@@ -298,3 +304,5 @@ export default function MetadataClient() {
     </main>
   );
 }
+
+    

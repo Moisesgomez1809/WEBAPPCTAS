@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, Frame, FileCog, BarChart3 } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, Frame, FileCog, BarChart3, Files } from 'lucide-react';
 import { getReversePdfAsDataUri, extractDocumentDetails } from '../actions';
 import { mergePdfsClient, modifyReversePdfClient, addFolioToPdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
@@ -373,6 +373,12 @@ export default function DashboardClient() {
           Combina fácilmente tu acta de nacimiento con su reverso oficial.
         </p>
          <div className="mt-6 flex justify-center gap-4 flex-wrap">
+            <Link href="/bulk-fusion">
+                <Button variant="outline">
+                    Fusión Masiva
+                    <Files className="ml-2 h-4 w-4" />
+                </Button>
+            </Link>
             <Link href="/frame">
                 <Button variant="outline">
                     Enmarcar Acta
@@ -442,3 +448,5 @@ export default function DashboardClient() {
     </main>
   );
 }
+
+    

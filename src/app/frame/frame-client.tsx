@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, BarChart3, Frame, Combine, FileCog } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, BarChart3, Frame, Combine, FileCog, Files } from 'lucide-react';
 import { getReversePdfAsDataUri, extractDocumentDetails, fetchFrameFromDB } from '../actions';
 import { framePdfClient, mergePdfsClient, modifyReversePdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
@@ -190,7 +190,6 @@ export default function FrameClient() {
     setLoadingStep('finding_frame');
 
     try {
-      // Concurrently fetch frame, details, and reverse side
       const framePromise = fetchFrameFromDB().then(frameLink => {
         if (!frameLink) throw new Error('No se encontró el enlace del marco en Firebase.');
         return getReversePdfAsDataUri(frameLink);
@@ -210,7 +209,6 @@ export default function FrameClient() {
       setExtractedCurp(curp);
       setEntity(entityToUse);
 
-      // Now do the PDF manipulations concurrently
       setLoadingStep('framing');
       const framedPdfPromise = framePdfClient(pdfDataUri, framePdfUri);
 
@@ -322,6 +320,7 @@ export default function FrameClient() {
         <p className="text-muted-foreground mt-2 text-lg">Sube un acta para enmarcarla y añadirle su reverso oficial.</p>
         <div className="mt-6 flex justify-center gap-4 flex-wrap">
           <Link href="/dashboard"><Button variant="outline"><Combine className="mr-2 h-4 w-4" />Ir a Acta Fusion</Button></Link>
+          <Link href="/bulk-fusion"><Button variant="outline"><Files className="mr-2 h-4 w-4" />Ir a Fusión Masiva</Button></Link>
           <Link href="/metadata"><Button variant="outline"><FileCog className="mr-2 h-4 w-4"/>Modificar Metadata</Button></Link>
           <Link href="/home"><Button variant="secondary"><BarChart3 className="mr-2 h-4 w-4" />Ver Dashboard</Button></Link>
         </div>
@@ -373,3 +372,5 @@ export default function FrameClient() {
     </main>
   );
 }
+
+    
