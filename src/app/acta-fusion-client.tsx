@@ -214,10 +214,10 @@ export default function ActaFusionClient() {
                         >
                           <RadialBarChart
                             data={chartData}
-                            startAngle={0}
-                            endAngle={weeklyTransactions / weeklyGoal * 360}
+                            startAngle={180}
+                            endAngle={0}
                             innerRadius={80}
-                            outerRadius={110}
+                            outerRadius={130}
                           >
                             <PolarAngleAxis
                               type="number"
@@ -229,23 +229,7 @@ export default function ActaFusionClient() {
                               dataKey="value"
                               background
                               cornerRadius={10}
-                              >
-                               <svg
-                                width="100%"
-                                height="100%"
-                                viewBox="0 0 16 16"
-                                className="recharts-radial-bar-background-sector"
-                                >
-                                <path
-                                    d="M15 8A7 7 0 1 1 1 8a7 7 0 0 1 14 0"
-                                    fill="none"
-                                    stroke="var(--color-trámites)"
-                                    strokeWidth="2"
-                                    strokeDasharray="1 3"
-                                    strokeLinecap="round"
-                                ></path>
-                                </svg>
-                            </RadialBar>
+                            />
                              <text
                                 x="50%"
                                 y="50%"
