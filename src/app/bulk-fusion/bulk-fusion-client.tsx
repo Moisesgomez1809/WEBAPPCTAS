@@ -13,15 +13,19 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ReverseSideEntry } from '@/lib/types';
 import Link from 'next/link';
+import UtilitiesCalculator from '@/components/utilities-calculator';
 
 interface QueueItem {
   id: string;
   file: File;
-  state: string; // State is now part of the item from the beginning
+  state: string;
   status: 'pending' | 'processing' | 'success' | 'error';
   resultUrl?: string;
   error?: string;
   curp?: string;
+  providerCost: number;
+  clientCost: number;
+  profit: number;
 }
 
 interface RawFile {
@@ -56,6 +60,10 @@ export default function BulkFusionClient() {
   
   const [currentPreviewUrl, setCurrentPreviewUrl] = useState<string | null>(null);
   const [selectedState, setSelectedState] = useState<string>('');
+  
+  const [providerCost, setProviderCost] = useState('');
+  const [clientCost, setClientCost] = useState('');
+  const [profit, setProfit] = useState(0);
 
   const { toast } = useToast();
 
@@ -87,6 +95,12 @@ export default function BulkFusionClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFile]);
 
+  useEffect(() => {
+    const pCost = parseFloat(providerCost) || 0;
+    const cCost = parseFloat(clientCost) || 0;
+    setProfit(cCost - pCost);
+  }, [providerCost, clientCost]);
+
   const handleFileChange = (files: FileList | null) => {
     if (files) {
       const newFiles = Array.from(files).filter(file => file.type === 'application/pdf');
@@ -110,11 +124,15 @@ export default function BulkFusionClient() {
         id: activeFile.id,
         file: activeFile.file,
         state: selectedState,
-        status: 'pending'
+        status: 'pending',
+        providerCost: parseFloat(providerCost) || 0,
+        clientCost: parseFloat(clientCost) || 0,
+        profit: profit
     };
     setProcessingQueue(prev => [...prev, newItem]);
     setRawFiles(prev => prev.slice(1)); // Remove the processed file from raw files
     setSelectedState(''); // Reset select
+    // No reseteamos los costos para que se puedan reusar en el siguiente archivo
   };
 
   const handleRemoveFromQueue = (id: string) => {
@@ -139,6 +157,7 @@ export default function BulkFusionClient() {
     
     setIsProcessing(true);
     const successfulDownloads: { url: string; name: string }[] = [];
+    let totalProfitThisSession = 0;
 
     const promises = itemsToProcess.map(async (item) => {
       try {
@@ -166,6 +185,10 @@ export default function BulkFusionClient() {
         
         const currentFusionCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
         localStorage.setItem('fusionCount', (currentFusionCount + 1).toString());
+        
+        if (item.profit > 0) {
+            totalProfitThisSession += item.profit;
+        }
 
         return { ...item, status: 'success' as 'success', resultUrl: finalPdf, curp };
 
@@ -185,6 +208,16 @@ export default function BulkFusionClient() {
                 name: `${result.curp || result.file.name.replace('.pdf', '')}.pdf`
             });
         }
+    }
+    
+    // Save total profit from this session to localStorage
+    if (totalProfitThisSession > 0) {
+        const currentTotalProfit = parseFloat(localStorage.getItem('totalProfit') || '0');
+        localStorage.setItem('totalProfit', (currentTotalProfit + totalProfitThisSession).toString());
+        toast({
+            title: "Utilidad Guardada",
+            description: `Se añadieron ${new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalProfitThisSession)} a tus ganancias totales.`,
+        });
     }
 
     setIsProcessing(false);
@@ -232,11 +265,15 @@ export default function BulkFusionClient() {
     setRawFiles([]);
     setProcessingQueue([]);
     setSelectedState('');
+    setProviderCost('');
+    setClientCost('');
     if (currentPreviewUrl) {
       URL.revokeObjectURL(currentPreviewUrl);
       setCurrentPreviewUrl(null);
     }
   };
+  
+  const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
 
 
   return (
@@ -256,11 +293,11 @@ export default function BulkFusionClient() {
       
       <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
         {/* Left column: Upload and Configure */}
-        <div className="lg:w-1/2 flex flex-col space-y-8">
+        <div className="lg:w-2/5 flex flex-col space-y-8">
             <Card>
                 <CardHeader>
                     <CardTitle>1. Cargar y Configurar Archivos</CardTitle>
-                    <CardDescription>Arrastra archivos, luego visualízalos y asígnales un estado para añadirlos a la lista de procesamiento.</CardDescription>
+                    <CardDescription>Arrastra archivos, luego visualízalos y asígnales un estado y costo para añadirlos a la lista de procesamiento.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {!activeFile ? (
@@ -296,6 +333,13 @@ export default function BulkFusionClient() {
                                     {availableStates.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
                                 </SelectContent>
                             </Select>
+                            <UtilitiesCalculator
+                                providerCost={providerCost}
+                                clientCost={clientCost}
+                                profit={profit}
+                                onProviderCostChange={setProviderCost}
+                                onClientCostChange={setClientCost}
+                            />
                             <Button onClick={handleAddToList} disabled={!selectedState} className="w-full">
                                 <ListPlus className="mr-2 h-4 w-4" /> Añadir a la Lista ({rawFiles.length - 1} restantes)
                             </Button>
@@ -306,7 +350,7 @@ export default function BulkFusionClient() {
         </div>
 
         {/* Right column: Processing Queue */}
-        <div className="lg:w-1/2 flex flex-col">
+        <div className="lg:w-3/5 flex flex-col">
             <Card className="h-full flex flex-col">
                 <CardHeader>
                     <CardTitle>2. Lista de Procesamiento</CardTitle>
@@ -320,8 +364,11 @@ export default function BulkFusionClient() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[40%]">Archivo</TableHead>
-                                        <TableHead className="w-[30%]">Estado</TableHead>
+                                        <TableHead className="w-[30%]">Archivo</TableHead>
+                                        <TableHead>Estado</TableHead>
+                                        <TableHead>Costo</TableHead>
+                                        <TableHead>Venta</TableHead>
+                                        <TableHead>Ganancia</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead className="text-right">Acción</TableHead>
                                     </TableRow>
@@ -329,8 +376,11 @@ export default function BulkFusionClient() {
                                 <TableBody>
                                     {processingQueue.map(item => (
                                         <TableRow key={item.id}>
-                                            <TableCell className="font-medium truncate max-w-[150px]">{item.file.name}</TableCell>
+                                            <TableCell className="font-medium truncate max-w-[120px]">{item.file.name}</TableCell>
                                             <TableCell>{item.state}</TableCell>
+                                            <TableCell>{formatCurrency(item.providerCost)}</TableCell>
+                                            <TableCell>{formatCurrency(item.clientCost)}</TableCell>
+                                            <TableCell className="text-green-600 font-medium">{formatCurrency(item.profit)}</TableCell>
                                             <TableCell>{renderStatusIcon(item)}</TableCell>
                                             <TableCell className="text-right">{renderActionCell(item)}</TableCell>
                                         </TableRow>
