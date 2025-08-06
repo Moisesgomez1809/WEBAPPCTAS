@@ -102,7 +102,7 @@ export default function LoginPage() {
             </Button>
           </form>
         </div>
-        <div className="hidden md:flex items-center justify-center bg-primary/10 p-8">
+        <div className="hidden md:flex items-center justify-center bg-card p-8">
             <Image
                 src="https://scontent.fjal3-1.fna.fbcdn.net/v/t39.30808-6/393808144_267627972934220_4209575570432257648_n.jpg?_nc_cat=103&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=lkU5Ttg0fEoQ7kNvwHA6ZPL&_nc_oc=AdlLngWkcn4a98BdbmYssZYhTAXWi-si8acbB-iii4M5I7poc9uwLPPQS3PdeRzmuHQlQDXahr_crMgX9qxGb5L5&_nc_zt=23&_nc_ht=scontent.fjal3-1.fna&_nc_gid=Tb7Bv_rAnDuOj1ldWy-Hyw&oh=00_AfW2SEF4rVZT2b41LiOQRJdj7ufpTz1zB9gn_KILdLZPzQ&oe=68988A13"
                 alt="Logo"
