@@ -94,13 +94,17 @@ export default function MetadataClient() {
     if (!modifiedPdfUrl) return;
 
     try {
-      if (profit > 0) {
+      const pCost = parseFloat(providerCost) || 0;
+      if (profit > 0 || pCost > 0) {
         const currentProfit = parseFloat(localStorage.getItem('totalProfit') || '0');
-        const newTotalProfit = currentProfit + profit;
-        localStorage.setItem('totalProfit', newTotalProfit.toString());
-         toast({
-            title: "Utilidad Guardada",
-            description: `Se añadieron ${new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(profit)} a tus ganancias.`,
+        localStorage.setItem('totalProfit', (currentProfit + profit).toString());
+
+        const currentProviderCost = parseFloat(localStorage.getItem('totalProviderCost') || '0');
+        localStorage.setItem('totalProviderCost', (currentProviderCost + pCost).toString());
+
+        toast({
+            title: "Estadísticas Guardadas",
+            description: `Se registró la utilidad y el costo del trámite.`,
         });
       }
 
@@ -304,5 +308,3 @@ export default function MetadataClient() {
     </main>
   );
 }
-
-    

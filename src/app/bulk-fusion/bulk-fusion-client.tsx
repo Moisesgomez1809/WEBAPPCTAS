@@ -158,6 +158,7 @@ export default function BulkFusionClient() {
     setIsProcessing(true);
     const successfulDownloads: { url: string; name: string }[] = [];
     let totalProfitThisSession = 0;
+    let totalProviderCostThisSession = 0;
 
     const promises = itemsToProcess.map(async (item) => {
       try {
@@ -186,9 +187,8 @@ export default function BulkFusionClient() {
         const currentFusionCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
         localStorage.setItem('fusionCount', (currentFusionCount + 1).toString());
         
-        if (item.profit > 0) {
-            totalProfitThisSession += item.profit;
-        }
+        totalProfitThisSession += item.profit;
+        totalProviderCostThisSession += item.providerCost;
 
         return { ...item, status: 'success' as 'success', resultUrl: finalPdf, curp };
 
@@ -210,13 +210,17 @@ export default function BulkFusionClient() {
         }
     }
     
-    // Save total profit from this session to localStorage
-    if (totalProfitThisSession > 0) {
+    // Save totals from this session to localStorage
+    if (totalProfitThisSession > 0 || totalProviderCostThisSession > 0) {
         const currentTotalProfit = parseFloat(localStorage.getItem('totalProfit') || '0');
         localStorage.setItem('totalProfit', (currentTotalProfit + totalProfitThisSession).toString());
+
+        const currentTotalProviderCost = parseFloat(localStorage.getItem('totalProviderCost') || '0');
+        localStorage.setItem('totalProviderCost', (currentTotalProviderCost + totalProviderCostThisSession).toString());
+        
         toast({
-            title: "Utilidad Guardada",
-            description: `Se añadieron ${new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalProfitThisSession)} a tus ganancias totales.`,
+            title: "Estadísticas Guardadas",
+            description: `Se procesaron las ganancias y costos de la sesión.`,
         });
     }
 
@@ -411,5 +415,3 @@ export default function BulkFusionClient() {
     </main>
   );
 }
-
-    
