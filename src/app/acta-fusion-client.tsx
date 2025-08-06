@@ -211,23 +211,25 @@ export default function ActaFusionClient() {
                             <div className="h-[250px] w-[250px] relative">
                                 <RadialBarChart
                                     data={chartData}
+                                    innerRadius="80%"
+                                    outerRadius="105%"
+                                    barSize={20}
                                     startAngle={90}
                                     endAngle={-270}
-                                    innerRadius="80%"
-                                    outerRadius="100%"
-                                    barSize={20}
                                 >
-                                <PolarAngleAxis
-                                    type="number"
-                                    domain={[0, weeklyGoal]}
-                                    dataKey="value"
-                                    tick={false}
-                                />
-                                <RadialBar
-                                    background={{ fill: "hsl(var(--secondary))" }}
-                                    dataKey="value"
-                                    cornerRadius={10}
-                                />
+                                    <PolarAngleAxis
+                                        type="number"
+                                        domain={[0, weeklyGoal]}
+                                        dataKey="value"
+                                        angleAxisId={0}
+                                        tick={false}
+                                    />
+                                    <RadialBar
+                                        background
+                                        dataKey="value"
+                                        angleAxisId={0}
+                                        cornerRadius={10}
+                                    />
                                 </RadialBarChart>
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
                                      <p className="text-5xl font-bold">{weeklyTransactions}</p>
@@ -304,3 +306,5 @@ export default function ActaFusionClient() {
     </main>
   );
 }
+
+    
