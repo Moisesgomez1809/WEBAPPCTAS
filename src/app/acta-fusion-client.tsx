@@ -19,12 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { RadialBar, RadialBarChart } from "recharts";
+import { Progress } from "@/components/ui/progress";
 
 
 interface Stats {
@@ -79,17 +74,9 @@ export default function ActaFusionClient() {
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
 
-  const chartData = [{ name: 'trámites', value: stats.total, fill: 'hsl(var(--primary))' }];
-  const chartConfig = {
-      value: { label: 'Trámites' },
-      trámites: {
-          label: 'Trámites',
-          color: 'hsl(var(--primary))'
-      }
-  };
   const totalTrámites = stats.total;
   const maxTrámites = 1000;
-  const chartAngle = 180 + (totalTrámites / maxTrámites) * 180;
+  const progressPercentage = (totalTrámites / maxTrámites) * 100;
 
 
   return (
@@ -115,45 +102,18 @@ export default function ActaFusionClient() {
                         <p className="text-xs text-muted-foreground pt-1">Suma total de costo de proveedor</p>
                     </CardContent>
                 </Card>
-                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
+                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Trámites Totales</CardTitle>
                         <BarChart3 className="h-5 w-5 text-muted-foreground" />
                     </CardHeader>
-                    <CardContent className="flex-1 flex items-center justify-center relative">
-                       <ChartContainer
-                            config={chartConfig}
-                            className="mx-auto aspect-square h-[180px]"
-                        >
-                            <RadialBarChart
-                                data={[{ name: 'trámites', value: maxTrámites, fill: 'hsl(var(--muted))' }]}
-                                startAngle={180}
-                                endAngle={0}
-                                innerRadius="75%"
-                                outerRadius="100%"
-                                barSize={20}
-                                margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
-                                >
-                                <RadialBar
-                                    dataKey="value"
-                                    background={{ fill: 'hsl(var(--muted))' }}
-                                    cornerRadius={10}
-                                    isAnimationActive={false}
-                                />
-                                <RadialBar
-                                    data={[{ name: 'trámites', value: totalTrámites, fill: 'hsl(var(--primary))' }]}
-                                    dataKey="value"
-                                    cornerRadius={10}
-                                    barSize={20}
-                                />
-                            </RadialBarChart>
-                        </ChartContainer>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center mt-4">
-                            <span className="text-5xl font-bold text-foreground">
-                                {stats.total}
-                            </span>
-                            <span className="text-xs text-muted-foreground">/ 1000</span>
-                        </div>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{totalTrámites}</div>
+                        <p className="text-xs text-muted-foreground">
+                            de {maxTrámites} trámites totales.
+                        </p>
+                        <Progress value={progressPercentage} className="mt-4 h-2" />
+                         <p className="text-xs text-muted-foreground pt-1 text-right">{progressPercentage.toFixed(1)}%</p>
                     </CardContent>
                 </Card>
                 <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
