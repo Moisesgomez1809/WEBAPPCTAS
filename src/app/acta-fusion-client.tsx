@@ -104,9 +104,10 @@ export default function ActaFusionClient() {
   const weeklyTransactions = stats.total;
   const remainingForGoal = weeklyGoal ? Math.max(0, weeklyGoal - weeklyTransactions) : 0;
   
-  const chartData = [
-    { name: "trámites", value: weeklyTransactions, fill: "hsl(var(--primary))" },
-  ];
+  const chartData = weeklyGoal ? [
+    { name: "trámites", value: weeklyTransactions > weeklyGoal ? weeklyGoal : weeklyTransactions, fill: "hsl(var(--primary))" },
+  ] : [];
+  
   const chartConfig = {
     trámites: { label: "Trámites", color: "hsl(var(--primary))" },
   } satisfies ChartConfig;
@@ -207,17 +208,14 @@ export default function ActaFusionClient() {
                 <CardContent className="flex flex-col items-center justify-center">
                    {isGoalLocked && weeklyGoal ? (
                         <div className="w-full flex flex-col items-center">
-                            <div className="h-[200px] w-full relative">
+                            <div className="h-[200px] w-[300px] relative">
                                 <RadialBarChart
                                     data={chartData}
                                     barSize={20}
-                                    startAngle={-210}
-                                    endAngle={30}
-                                    innerRadius={80}
-                                    cy="55%"
-                                    outerRadius={110}
-                                    barCategoryGap={0}
-                                    viewBox={{ x: 0, y: 0, width: 300, height: 200 }}
+                                    startAngle={180}
+                                    endAngle={0}
+                                    innerRadius="70%"
+                                    outerRadius="100%"
                                 >
                                 <PolarAngleAxis
                                     type="number"
@@ -308,5 +306,3 @@ export default function ActaFusionClient() {
     </main>
   );
 }
-
-    
