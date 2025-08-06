@@ -187,7 +187,7 @@ export default function ActaFusionClient() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
-                            <AlertDialogTitle>¿Estás absolutely seguro?</AlertDialogTitle>
+                            <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
                             <AlertDialogDescription>
                                 Esta acción no se puede deshacer. Esto pondrá a cero todos los contadores de trámites y las ganancias.
                             </AlertDialogDescription>

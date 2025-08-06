@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileUp, Loader2, AlertCircle, RefreshCcw, Frame, FileCog, BarChart3, Trash2, Files, Sparkles, Download } from 'lucide-react';
+import { FileUp, Loader2, CheckCircle2, AlertCircle, Trash2, Files, Sparkles, Download } from 'lucide-react';
 import { getReversePdfAsDataUri, extractDocumentDetails } from '../actions';
 import { mergePdfsClient, modifyReversePdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
@@ -98,15 +98,14 @@ export default function BulkFusionClient() {
   };
   
   const handleProcessQueue = async () => {
-    if (fileQueue.length === 0) {
-      toast({ title: 'Cola Vacía', description: 'No hay archivos en la lista para procesar.' });
+    const itemsToProcess = fileQueue.filter(item => item.status === 'pending');
+    if (itemsToProcess.length === 0) {
+      toast({ title: 'No hay archivos pendientes', description: 'Agrega archivos a la cola o ya se han procesado todos.' });
       return;
     }
     setIsProcessing(true);
 
-    const promises = fileQueue.map(async (item) => {
-      if (item.status !== 'pending') return item;
-
+    const promises = itemsToProcess.map(async (item) => {
       try {
         setFileQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'processing' } : i));
         
@@ -129,19 +128,27 @@ export default function BulkFusionClient() {
         const reversePdfDataUri = await getReversePdfAsDataUri(reverseSideEntry['link del reverso para descarga directa']);
         const modifiedReversePdfUri = await modifyReversePdfClient(reversePdfDataUri, curp, electronicId);
         const finalPdf = await mergePdfsClient(fileDataUri, modifiedReversePdfUri);
+        
+        const currentFusionCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
+        localStorage.setItem('fusionCount', (currentFusionCount + 1).toString());
 
-        return { ...item, status: 'success', resultUrl: finalPdf, curp };
+        return { ...item, status: 'success' as 'success', resultUrl: finalPdf, curp };
 
       } catch (e: any) {
+        console.error(`Error processing ${item.file.name}:`, e);
         const errorMessage = e instanceof Error ? e.message : 'Error desconocido.';
-        return { ...item, status: 'error', error: errorMessage };
+        return { ...item, status: 'error' as 'error', error: errorMessage };
       }
     });
     
-    const results = await Promise.all(promises);
-    setFileQueue(results);
+    // Process one by one and update the UI
+    for (const promise of promises) {
+        const result = await promise;
+        setFileQueue(prev => prev.map(i => i.id === result.id ? result : i));
+    }
+
     setIsProcessing(false);
-    toast({ title: 'Proceso Completado', description: 'Se han procesado todos los archivos de la cola.' });
+    toast({ title: 'Proceso Completado', description: 'Se han procesado todos los archivos pendientes de la cola.' });
   };
   
   const handleDragEvents = {
@@ -154,22 +161,46 @@ export default function BulkFusionClient() {
     },
   };
 
+  const renderStatusIcon = (item: FileQueueItem) => {
+    switch (item.status) {
+        case 'pending': return <span className="text-muted-foreground">Pendiente</span>;
+        case 'processing': return <span className="text-blue-500 flex items-center"><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Procesando</span>;
+        case 'success': return <span className="text-green-500 flex items-center"><CheckCircle2 className="mr-2 h-4 w-4"/>Éxito</span>;
+        case 'error': return <span className="text-destructive flex items-center" title={item.error}><AlertCircle className="mr-2 h-4 w-4"/>Error</span>;
+    }
+  }
+
+  const renderActionCell = (item: FileQueueItem) => {
+    if (item.status === 'success' && item.resultUrl) {
+      return (
+        <a href={item.resultUrl} download={`${item.curp || item.file.name.replace('.pdf','')}.pdf`}>
+          <Button variant="outline" size="sm"><Download className="h-4 w-4"/></Button>
+        </a>
+      );
+    }
+    return (
+      <Button variant="ghost" size="icon" onClick={() => handleRemoveFromQueue(item.id)} disabled={isProcessing}>
+          <Trash2 className="h-4 w-4 text-destructive"/>
+      </Button>
+    );
+  }
+
   return (
-    <main className="container mx-auto p-4 sm:p-6 lg:p-8 min-h-screen flex flex-col items-center">
+    <main className="container mx-auto p-4 sm:p-6 lg:p-8 min-h-screen flex flex-col">
       <header className="text-center mb-10">
         <h1 className="text-5xl font-bold text-primary font-headline">Fusión Masiva</h1>
         <p className="text-muted-foreground mt-2 text-lg">
           Sube múltiples actas de nacimiento para fusionarlas con su reverso oficial en lote.
         </p>
          <div className="mt-6 flex justify-center gap-4 flex-wrap">
-            <Link href="/dashboard"><Button variant="outline">Fusión Individual<Sparkles className="ml-2 h-4 w-4" /></Button></Link>
-            <Link href="/frame"><Button variant="outline">Enmarcar Acta<Frame className="ml-2 h-4 w-4" /></Button></Link>
-            <Link href="/metadata"><Button variant="outline">Modificar Metadata<FileCog className="ml-2 h-4 w-4" /></Button></Link>
-            <Link href="/home"><Button variant="secondary">Ver Dashboard<BarChart3 className="ml-2 h-4 w-4" /></Button></Link>
+            <Link href="/dashboard"><Button variant="outline">Fusión Individual</Button></Link>
+            <Link href="/frame"><Button variant="outline">Enmarcar Acta</Button></Link>
+            <Link href="/metadata"><Button variant="outline">Modificar Metadata</Button></Link>
+            <Link href="/home"><Button variant="secondary">Ver Dashboard</Button></Link>
         </div>
       </header>
       
-      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="flex flex-col space-y-4">
             <Card>
                 <CardHeader>
@@ -202,6 +233,7 @@ export default function BulkFusionClient() {
                     </Select>
                     {pendingFiles.length > 0 && (
                         <Alert>
+                            <AlertCircle className="h-4 w-4" />
                             <AlertTitle>{pendingFiles.length} archivo(s) listo(s) para agregar</AlertTitle>
                             <AlertDescription>
                                 Los archivos se agregarán a la cola con el estado: <strong>{selectedState || '(Ninguno seleccionado)'}</strong>.
@@ -222,11 +254,11 @@ export default function BulkFusionClient() {
             <CardHeader>
               <CardTitle>3. Lista de Procesamiento</CardTitle>
               <CardDescription>
-                Archivos listos para ser procesados. Presiona "Procesar Todo" cuando estés listo.
+                Archivos listos para ser procesados. Presiona "Procesar Lista" cuando estés listo.
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex-grow">
-                <div className="w-full h-full bg-secondary rounded-lg">
+            <CardContent className="flex-grow overflow-y-auto">
+                <div className="w-full h-full bg-background rounded-lg border">
                     {fileQueue.length > 0 ? (
                         <Table>
                             <TableHeader>
@@ -240,23 +272,10 @@ export default function BulkFusionClient() {
                             <TableBody>
                                 {fileQueue.map(item => (
                                     <TableRow key={item.id}>
-                                        <TableCell className="font-medium truncate max-w-xs">{item.file.name}</TableCell>
+                                        <TableCell className="font-medium truncate max-w-[200px]">{item.file.name}</TableCell>
                                         <TableCell>{item.state}</TableCell>
-                                        <TableCell>
-                                            {item.status === 'pending' && <span className="text-muted-foreground">Pendiente</span>}
-                                            {item.status === 'processing' && <span className="text-blue-500 flex items-center"><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Procesando</span>}
-                                            {item.status === 'success' && <span className="text-green-500">Éxito</span>}
-                                            {item.status === 'error' && <span className="text-destructive" title={item.error}>Error</span>}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            {item.status === 'success' && item.resultUrl ? (
-                                                 <a href={item.resultUrl} download={`${item.curp || item.file.name}.pdf`}><Button variant="outline" size="sm"><Download className="h-4 w-4"/></Button></a>
-                                            ) : (
-                                                <Button variant="ghost" size="icon" onClick={() => handleRemoveFromQueue(item.id)} disabled={isProcessing}>
-                                                    <Trash2 className="h-4 w-4 text-destructive"/>
-                                                </Button>
-                                            )}
-                                        </TableCell>
+                                        <TableCell>{renderStatusIcon(item)}</TableCell>
+                                        <TableCell className="text-right">{renderActionCell(item)}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -269,10 +288,10 @@ export default function BulkFusionClient() {
                     )}
                 </div>
             </CardContent>
-            <CardFooter className="flex-col space-y-2">
+            <CardFooter className="flex-col space-y-2 pt-6">
                  <Button onClick={handleProcessQueue} disabled={isProcessing || fileQueue.every(i => i.status !== 'pending')} className="w-full">
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4" />}
-                    {isProcessing ? 'Procesando...' : 'Procesar Todo'}
+                    {isProcessing ? 'Procesando...' : 'Procesar Lista'}
                 </Button>
                 <Button onClick={() => setFileQueue([])} variant="destructive" className="w-full" disabled={isProcessing}>
                     <Trash2 className="mr-2 h-4 w-4" /> Limpiar Lista

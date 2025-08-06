@@ -249,8 +249,8 @@ export default function MetadataClient() {
             </Link>
             <Link href="/home">
                 <Button variant="secondary">
-                    Ver Dashboard
                     <BarChart3 className="mr-2 h-4 w-4" />
+                    Ver Dashboard
                 </Button>
             </Link>
         </div>
