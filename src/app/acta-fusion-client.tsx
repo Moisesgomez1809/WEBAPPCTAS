@@ -18,7 +18,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { RadialBar, RadialBarChart } from "recharts";
+
 
 interface Stats {
   total: number;
@@ -72,6 +79,11 @@ export default function ActaFusionClient() {
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
 
+  const chartData = [{ name: 'trámites', value: stats.total, fill: 'hsl(var(--primary))' }];
+  const chartConfig = {
+      value: { label: 'Trámites' },
+  };
+
   return (
     <main className="container mx-auto p-4 sm:p-6 lg:p-8 min-h-screen flex flex-col items-center">
         <header className="w-full text-center mb-10">
@@ -83,17 +95,7 @@ export default function ActaFusionClient() {
 
         <div className="w-full max-w-5xl space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Trámites Totales</CardTitle>
-                        <BarChart3 className="h-5 w-5 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-4xl font-bold">{stats.total}</div>
-                        <p className="text-xs text-muted-foreground pt-1">Suma de todos los trámites realizados</p>
-                    </CardContent>
-                </Card>
-                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+                 <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Compra a Proveedor</CardTitle>
                         <ShoppingCart className="h-5 w-5 text-muted-foreground" />
@@ -103,6 +105,38 @@ export default function ActaFusionClient() {
                            {formatCurrency(stats.providerCost)}
                         </div>
                         <p className="text-xs text-muted-foreground pt-1">Suma total de costo de proveedor</p>
+                    </CardContent>
+                </Card>
+                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Trámites Totales</CardTitle>
+                        <BarChart3 className="h-5 w-5 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent className="flex-1 flex items-center justify-center relative">
+                       <ChartContainer
+                            config={chartConfig}
+                            className="mx-auto aspect-square w-full max-w-[250px]"
+                        >
+                            <RadialBarChart
+                                data={chartData}
+                                endAngle={0}
+                                innerRadius="80%"
+                                outerRadius="110%"
+                                startAngle={180}
+                            >
+                                <ChartTooltip
+                                    cursor={false}
+                                    content={<ChartTooltipContent hideLabel />}
+                                />
+                                <RadialBar dataKey="value" background cornerRadius={10} />
+                            </RadialBarChart>
+                        </ChartContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-5xl font-bold text-foreground">
+                                {stats.total}
+                            </span>
+                            <span className="text-xs text-muted-foreground">/ 1000</span>
+                        </div>
                     </CardContent>
                 </Card>
                 <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
@@ -158,7 +192,7 @@ export default function ActaFusionClient() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
-                            <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                            <AlertDialogTitle>¿Estás absolutely seguro?</AlertDialogTitle>
                             <AlertDialogDescription>
                                 Esta acción no se puede deshacer. Esto pondrá a cero todos los contadores de trámites, las ganancias y los costos.
                             </AlertDialogDescription>
@@ -175,3 +209,5 @@ export default function ActaFusionClient() {
     </main>
   );
 }
+
+    
