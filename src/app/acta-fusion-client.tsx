@@ -27,6 +27,7 @@ import {
   PolarAngleAxis,
 } from "recharts";
 import type { ChartConfig } from "@/components/ui/chart";
+import { ChartContainer } from '@/components/ui/chart';
 
 
 interface Stats {
@@ -207,45 +208,76 @@ export default function ActaFusionClient() {
                 </CardHeader>
                 <CardContent className="flex flex-col items-center justify-center pt-6">
                    {isGoalLocked && weeklyGoal ? (
-                        <div className="w-full flex flex-col items-center">
-                            <div className="h-[250px] w-[250px] relative">
-                                <RadialBarChart
-                                    data={chartData}
-                                    innerRadius="80%"
-                                    outerRadius="105%"
-                                    barSize={20}
-                                    startAngle={90}
-                                    endAngle={-270}
+                        <ChartContainer
+                          config={chartConfig}
+                          className="mx-auto aspect-square h-[250px]"
+                        >
+                          <RadialBarChart
+                            data={chartData}
+                            startAngle={0}
+                            endAngle={weeklyTransactions / weeklyGoal * 360}
+                            innerRadius={80}
+                            outerRadius={110}
+                          >
+                            <PolarAngleAxis
+                              type="number"
+                              domain={[0, weeklyGoal]}
+                              dataKey="value"
+                              tick={false}
+                            />
+                            <RadialBar
+                              dataKey="value"
+                              background
+                              cornerRadius={10}
+                              >
+                               <svg
+                                width="100%"
+                                height="100%"
+                                viewBox="0 0 16 16"
+                                className="recharts-radial-bar-background-sector"
                                 >
-                                    <PolarAngleAxis
-                                        type="number"
-                                        domain={[0, weeklyGoal]}
-                                        dataKey="value"
-                                        angleAxisId={0}
-                                        tick={false}
-                                    />
-                                    <RadialBar
-                                        background
-                                        dataKey="value"
-                                        angleAxisId={0}
-                                        cornerRadius={10}
-                                    />
-                                </RadialBarChart>
-                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-                                     <p className="text-5xl font-bold">{weeklyTransactions}</p>
-                                     <p className="text-sm text-muted-foreground">de {weeklyGoal}</p>
-                                </div>
-                            </div>
-                             <p className="text-center mt-4 text-muted-foreground font-medium">
-                                {remainingForGoal > 0
-                                ? `¡Vamos, sí se puede! Te faltan ${remainingForGoal} para llegar a tu meta.`
-                                : "¡Felicidades, has alcanzado tu meta semanal!"}
-                            </p>
-                        </div>
+                                <path
+                                    d="M15 8A7 7 0 1 1 1 8a7 7 0 0 1 14 0"
+                                    fill="none"
+                                    stroke="var(--color-trámites)"
+                                    strokeWidth="2"
+                                    strokeDasharray="1 3"
+                                    strokeLinecap="round"
+                                ></path>
+                                </svg>
+                            </RadialBar>
+                             <text
+                                x="50%"
+                                y="50%"
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                className="fill-foreground text-5xl font-bold"
+                            >
+                                {weeklyTransactions.toLocaleString()}
+                            </text>
+                            <text
+                                x="50%"
+                                y="50%"
+                                dy="2.5em"
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                className="fill-muted-foreground text-lg"
+                            >
+                                de {weeklyGoal?.toLocaleString()}
+                            </text>
+                          </RadialBarChart>
+                        </ChartContainer>
                     ) : (
                         <div className="text-center text-muted-foreground p-8">
                             <p>Define una meta y bloquéala para empezar a rastrear.</p>
                         </div>
+                    )}
+                     {isGoalLocked && weeklyGoal && (
+                        <p className="text-center mt-4 text-muted-foreground font-medium">
+                            {remainingForGoal > 0
+                            ? `¡Vamos, sí se puede! Te faltan ${remainingForGoal} para llegar a tu meta.`
+                            : "¡Felicidades, has alcanzado tu meta semanal!"}
+                        </p>
                     )}
                 </CardContent>
              </Card>
@@ -306,5 +338,3 @@ export default function ActaFusionClient() {
     </main>
   );
 }
-
-    
