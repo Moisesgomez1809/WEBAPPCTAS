@@ -39,7 +39,6 @@ export default function ActaFusionClient() {
   const [stats, setStats] = useState<Stats>({ total: 0, profit: 0, providerCost: 0 });
   const [weeklyGoal, setWeeklyGoal] = useState<number | null>(null);
   const [isGoalLocked, setIsGoalLocked] = useState(false);
-  const [initialTotalForGoal, setInitialTotalForGoal] = useState(0);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -62,11 +61,9 @@ export default function ActaFusionClient() {
     // Load weekly goal state
     const savedGoal = localStorage.getItem('weeklyGoal');
     const savedIsLocked = localStorage.getItem('isGoalLocked');
-    const savedInitialTotal = localStorage.getItem('initialTotalForGoal');
 
     if (savedGoal) setWeeklyGoal(parseInt(savedGoal, 10));
     if (savedIsLocked) setIsGoalLocked(JSON.parse(savedIsLocked));
-    if (savedInitialTotal) setInitialTotalForGoal(parseInt(savedInitialTotal, 10));
   }, []);
 
   const handleResetStats = () => {
@@ -79,12 +76,10 @@ export default function ActaFusionClient() {
         localStorage.setItem('totalProviderCost', '0');
         localStorage.removeItem('weeklyGoal');
         localStorage.removeItem('isGoalLocked');
-        localStorage.removeItem('initialTotalForGoal');
 
         setStats({ total: 0, profit: 0, providerCost: 0 });
         setWeeklyGoal(null);
         setIsGoalLocked(false);
-        setInitialTotalForGoal(0);
         
         toast({
             title: "Estadísticas Reiniciadas",
@@ -106,7 +101,7 @@ export default function ActaFusionClient() {
   const maxTrámites = 1000;
   const progressPercentage = totalTrámites > 0 ? (totalTrámites / maxTrámites) * 100 : 0;
 
-  const weeklyTransactions = Math.max(0, stats.total - initialTotalForGoal);
+  const weeklyTransactions = stats.total;
   const remainingForGoal = weeklyGoal ? Math.max(0, weeklyGoal - weeklyTransactions) : 0;
   
   const chartData = [
@@ -125,10 +120,8 @@ export default function ActaFusionClient() {
       // Lock
       if (weeklyGoal && weeklyGoal > 0) {
         setIsGoalLocked(true);
-        setInitialTotalForGoal(stats.total);
         localStorage.setItem('weeklyGoal', weeklyGoal.toString());
         localStorage.setItem('isGoalLocked', 'true');
-        localStorage.setItem('initialTotalForGoal', stats.total.toString());
         toast({ title: "¡Meta guardada!", description: "A trabajar para alcanzarla." });
       } else {
         toast({ title: "Meta Inválida", description: "Por favor, introduce un número mayor que cero.", variant: "destructive" });
