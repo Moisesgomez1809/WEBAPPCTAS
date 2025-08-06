@@ -105,7 +105,7 @@ export default function ActaFusionClient() {
   const remainingForGoal = weeklyGoal ? Math.max(0, weeklyGoal - weeklyTransactions) : 0;
   
   const chartData = weeklyGoal ? [
-    { name: "trámites", value: weeklyTransactions > weeklyGoal ? weeklyGoal : weeklyTransactions, fill: "hsl(var(--primary))" },
+    { name: "trámites", value: weeklyTransactions, fill: "hsl(var(--primary))" },
   ] : [];
   
   const chartConfig = {
@@ -205,35 +205,33 @@ export default function ActaFusionClient() {
                     </div>
                      <CardDescription>Establece un objetivo semanal y monitorea tu progreso.</CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col items-center justify-center">
+                <CardContent className="flex flex-col items-center justify-center pt-6">
                    {isGoalLocked && weeklyGoal ? (
                         <div className="w-full flex flex-col items-center">
-                            <div className="h-[200px] w-[300px] relative">
+                            <div className="h-[250px] w-[250px] relative">
                                 <RadialBarChart
                                     data={chartData}
-                                    barSize={20}
-                                    startAngle={180}
-                                    endAngle={0}
-                                    innerRadius="70%"
+                                    startAngle={90}
+                                    endAngle={-270}
+                                    innerRadius="80%"
                                     outerRadius="100%"
+                                    barSize={20}
                                 >
                                 <PolarAngleAxis
                                     type="number"
                                     domain={[0, weeklyGoal]}
                                     dataKey="value"
-                                    angleAxisId={0}
                                     tick={false}
                                 />
                                 <RadialBar
                                     background={{ fill: "hsl(var(--secondary))" }}
                                     dataKey="value"
-                                    angleAxisId={0}
                                     cornerRadius={10}
                                 />
                                 </RadialBarChart>
-                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center mt-2">
-                                     <p className="text-4xl font-bold">{weeklyTransactions}</p>
-                                     <p className="text-xs text-muted-foreground">de {weeklyGoal}</p>
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+                                     <p className="text-5xl font-bold">{weeklyTransactions}</p>
+                                     <p className="text-sm text-muted-foreground">de {weeklyGoal}</p>
                                 </div>
                             </div>
                              <p className="text-center mt-4 text-muted-foreground font-medium">
