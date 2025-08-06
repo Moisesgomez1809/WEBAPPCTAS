@@ -82,7 +82,15 @@ export default function ActaFusionClient() {
   const chartData = [{ name: 'trámites', value: stats.total, fill: 'hsl(var(--primary))' }];
   const chartConfig = {
       value: { label: 'Trámites' },
+      trámites: {
+          label: 'Trámites',
+          color: 'hsl(var(--primary))'
+      }
   };
+  const totalTrámites = stats.total;
+  const maxTrámites = 1000;
+  const chartAngle = 180 + (totalTrámites / maxTrámites) * 180;
+
 
   return (
     <main className="container mx-auto p-4 sm:p-6 lg:p-8 min-h-screen flex flex-col items-center">
@@ -115,23 +123,32 @@ export default function ActaFusionClient() {
                     <CardContent className="flex-1 flex items-center justify-center relative">
                        <ChartContainer
                             config={chartConfig}
-                            className="mx-auto aspect-square w-full max-w-[250px]"
+                            className="mx-auto aspect-square h-[180px]"
                         >
                             <RadialBarChart
-                                data={chartData}
-                                endAngle={0}
-                                innerRadius="80%"
-                                outerRadius="110%"
+                                data={[{ name: 'trámites', value: maxTrámites, fill: 'hsl(var(--muted))' }]}
                                 startAngle={180}
-                            >
-                                <ChartTooltip
-                                    cursor={false}
-                                    content={<ChartTooltipContent hideLabel />}
+                                endAngle={0}
+                                innerRadius="75%"
+                                outerRadius="100%"
+                                barSize={20}
+                                margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+                                >
+                                <RadialBar
+                                    dataKey="value"
+                                    background={{ fill: 'hsl(var(--muted))' }}
+                                    cornerRadius={10}
+                                    isAnimationActive={false}
                                 />
-                                <RadialBar dataKey="value" background cornerRadius={10} />
+                                <RadialBar
+                                    data={[{ name: 'trámites', value: totalTrámites, fill: 'hsl(var(--primary))' }]}
+                                    dataKey="value"
+                                    cornerRadius={10}
+                                    barSize={20}
+                                />
                             </RadialBarChart>
                         </ChartContainer>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center mt-4">
                             <span className="text-5xl font-bold text-foreground">
                                 {stats.total}
                             </span>
@@ -209,5 +226,3 @@ export default function ActaFusionClient() {
     </main>
   );
 }
-
-    
