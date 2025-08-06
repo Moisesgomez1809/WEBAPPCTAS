@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, LogIn } from 'lucide-react';
 import { verifyUser } from '../actions';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -54,17 +55,17 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-secondary p-8">
-      <Card className="w-full max-w-sm shadow-2xl">
-        <CardHeader className="text-center">
-          <LogIn className="mx-auto h-12 w-12 text-primary" />
-          <CardTitle className="text-3xl font-headline">Iniciar Sesión</CardTitle>
-          <CardDescription>
-            Ingresa tus credenciales para acceder a la aplicación.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-6">
+    <main className="flex min-h-screen items-center justify-center bg-secondary p-4 sm:p-6 lg:p-8">
+      <div className="w-full max-w-4xl overflow-hidden rounded-2xl shadow-2xl md:grid md:grid-cols-2">
+        <div className="bg-card p-8 sm:p-12">
+           <div className="text-center md:text-left">
+              <LogIn className="mx-auto md:mx-0 h-10 w-10 text-primary" />
+              <CardTitle className="text-3xl font-headline mt-4">Iniciar Sesión</CardTitle>
+              <CardDescription className="mt-2">
+                Ingresa tus credenciales para acceder a la aplicación.
+              </CardDescription>
+           </div>
+          <form onSubmit={handleLogin} className="mt-8 space-y-6">
             <div className="space-y-2">
               <Label htmlFor="username">Usuario</Label>
               <Input
@@ -75,6 +76,7 @@ export default function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 disabled={loading}
+                className="bg-secondary"
               />
             </div>
             <div className="space-y-2">
@@ -87,6 +89,7 @@ export default function LoginPage() {
                 onChange={(e) => setToken(e.target.value)}
                 required
                 disabled={loading}
+                 className="bg-secondary"
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
@@ -98,8 +101,18 @@ export default function LoginPage() {
               {loading ? 'Verificando...' : 'Acceder'}
             </Button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="hidden md:flex items-center justify-center bg-primary/10 p-8">
+            <Image
+                src="https://placehold.co/400x400.png"
+                alt="Logo"
+                width={300}
+                height={300}
+                className="rounded-lg object-cover"
+                data-ai-hint="logo"
+            />
+        </div>
+      </div>
     </main>
   );
 }
