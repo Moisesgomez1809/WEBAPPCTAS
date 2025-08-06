@@ -104,12 +104,11 @@ export default function LoginPage() {
         </div>
         <div className="hidden md:flex items-center justify-center bg-primary/10 p-8">
             <Image
-                src="https://placehold.co/400x400.png"
+                src="/assets/logo.png"
                 alt="Logo"
                 width={300}
                 height={300}
                 className="rounded-lg object-cover"
-                data-ai-hint="logo"
             />
         </div>
       </div>
