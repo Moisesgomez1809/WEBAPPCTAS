@@ -174,10 +174,8 @@ export default function DashboardClient() {
     }
   };
   
-  const handleDownloadAndSave = () => {
-    if (!combinedPdfUrl) return;
-
-    try {
+  const handleDownloadAndSave = (url: string, name: string) => {
+     try {
       if (profit > 0) {
         const currentProfit = parseFloat(localStorage.getItem('totalProfit') || '0');
         const newTotalProfit = currentProfit + profit;
@@ -197,8 +195,8 @@ export default function DashboardClient() {
       }
       
       const link = document.createElement('a');
-      link.href = combinedPdfUrl;
-      link.download = extractedCurp ? `${extractedCurp}.pdf` : 'acta-fusionada.pdf';
+      link.href = url;
+      link.download = name;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -210,7 +208,21 @@ export default function DashboardClient() {
             variant: "destructive",
         });
     }
-  };
+  }
+
+  const handleProcessSuccess = useCallback((finalPdf: string, curp: string | null) => {
+    setCombinedPdfUrl(finalPdf);
+    setMergedPreview(finalPdf);
+    setLoadingStep('done');
+    setStatus('success');
+    toast({
+      title: "¡Éxito!",
+      description: `Tu PDF ha sido creado ${addFolio ? 'y foliado' : ''} correctamente. Descargando...`,
+    });
+    handleDownloadAndSave(finalPdf, curp ? `${curp}.pdf` : 'acta-fusionada.pdf');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addFolio, profit]);
+
 
   const processFusion = async (entityToUse: string) => {
     if (!originalPdfUrl || !entityToUse) {
@@ -259,15 +271,7 @@ export default function DashboardClient() {
         finalPdf = await addFolioToPdfClient(finalPdf);
       }
 
-      setCombinedPdfUrl(finalPdf);
-      await setMergedPreview(finalPdf);
-
-      setLoadingStep('done');
-      setStatus('success');
-      toast({
-        title: "¡Éxito!",
-        description: `Tu PDF ha sido creado ${addFolio ? 'y foliado' : ''} correctamente.`,
-      });
+      handleProcessSuccess(finalPdf, curp);
 
     } catch (e: any) {
       console.error(e);
@@ -341,7 +345,7 @@ export default function DashboardClient() {
         )}
 
         {status === 'success' && combinedPdfUrl && (
-          <Button onClick={handleDownloadAndSave} className="w-full bg-green-500 hover:bg-green-600 text-white">
+          <Button onClick={() => handleDownloadAndSave(combinedPdfUrl, extractedCurp ? `${extractedCurp}.pdf` : 'acta-fusionada.pdf')} className="w-full bg-green-500 hover:bg-green-600 text-white">
             <Download className="mr-2 h-4 w-4" /> Descargar PDF Fusionado
           </Button>
         )}
@@ -448,5 +452,7 @@ export default function DashboardClient() {
     </main>
   );
 }
+
+    
 
     
