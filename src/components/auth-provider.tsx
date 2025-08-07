@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { goOffline } from 'firebase/database';
-import { database, auth } from '@/lib/firebase';
+import { database as getDb, auth as getAuthInstance } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 
 interface AuthContextType {
@@ -21,6 +21,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const auth = getAuthInstance();
     // onAuthStateChanged is the key to session persistence.
     // It fires once on load, and again whenever the auth state changes.
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -30,7 +31,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         // User is signed out.
         setUser(null);
-        goOffline(database); // Ensure DB connection is closed if not authenticated.
+        const db = getDb();
+        goOffline(db); // Ensure DB connection is closed if not authenticated.
       }
       setIsLoading(false);
     });
@@ -48,10 +50,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+        const auth = getAuthInstance();
         await signOut(auth); // This will trigger onAuthStateChanged, which will set user to null.
         
         // Explicitly close the Firebase database connection.
-        goOffline(database);
+        const db = getDb();
+        goOffline(db);
         
         // Also clear any local data
         localStorage.removeItem('reverse-sides-db');

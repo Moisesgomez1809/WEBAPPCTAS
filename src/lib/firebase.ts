@@ -1,7 +1,7 @@
 
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getDatabase } from "firebase/database";
-import { getAuth } from "firebase/auth";
+import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
+import { getDatabase, type Database } from "firebase/database";
+import { getAuth, type Auth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,9 +13,31 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
+// Lazy initialization for Firebase services
+let app: FirebaseApp;
+let auth: Auth;
+let database: Database;
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const database = getDatabase(app);
-const auth = getAuth(app);
+if (typeof window !== 'undefined' && !getApps().length) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp();
+}
 
-export { app, database, auth };
+// Use functions to get instances, ensuring they are initialized
+const getDb = () => {
+    if (!database) {
+        database = getDatabase(app);
+    }
+    return database;
+}
+
+const getAuthInstance = () => {
+    if (!auth) {
+        auth = getAuth(app);
+    }
+    return auth;
+}
+
+// Re-exporting the instances through functions
+export { app, getDb as database, getAuthInstance as auth };

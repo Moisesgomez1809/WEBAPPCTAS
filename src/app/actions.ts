@@ -4,13 +4,14 @@
 import { extractIssuingEntity as extractEntityFlow } from '@/ai/flows/extract-entity';
 import { extractDocumentDetails as extractDetailsFlow } from '@/ai/flows/extract-details';
 import { get, ref } from 'firebase/database';
-import { database } from '@/lib/firebase';
+import { database as getDb } from '@/lib/firebase';
 import type { ReverseSideEntry } from '@/lib/types';
 
 
 export async function fetchReverseSidesFromDB(): Promise<ReverseSideEntry[]> {
   try {
-    const reversosRef = ref(database, 'REVERSOS');
+    const db = getDb();
+    const reversosRef = ref(db, 'REVERSOS');
     const snapshot = await get(reversosRef);
     if (snapshot.exists()) {
       const data = snapshot.val();
@@ -31,7 +32,8 @@ export async function fetchReverseSidesFromDB(): Promise<ReverseSideEntry[]> {
 
 export async function fetchFrameFromDB(): Promise<string> {
     try {
-        const frameRef = ref(database, 'MARCOS/MARCO ACTAS');
+        const db = getDb();
+        const frameRef = ref(db, 'MARCOS/MARCO ACTAS');
         const snapshot = await get(frameRef);
         if (snapshot.exists()) {
             return snapshot.val();
