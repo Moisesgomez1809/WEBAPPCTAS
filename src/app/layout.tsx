@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import AuthProvider from '@/components/auth-provider';
+import AppLayout from '@/components/app-layout';
 
 export const metadata: Metadata = {
   title: 'Actas Fusion',
@@ -30,12 +31,16 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <ThemeSwitcher />
-            {children}
-            <Toaster />
+            <AppLayout>
+              <ThemeSwitcher />
+              {children}
+              <Toaster />
+            </AppLayout>
           </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
   );
 }
+
+    

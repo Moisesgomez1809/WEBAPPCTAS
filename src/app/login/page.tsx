@@ -58,9 +58,12 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader className="text-center">
             <LogIn className="mx-auto h-10 w-10 text-primary" />
-            <CardTitle className="text-3xl font-headline mt-4">Iniciar Sesión</CardTitle>
+            <CardTitle className="text-3xl font-headline mt-4">Bienvenido a SIFFA</CardTitle>
             <CardDescription className="mt-2">
-            Ingresa tus credenciales para acceder a la aplicación.
+            Sistema Integral para Fusión y Foleo de Actas.
+            </CardDescription>
+            <CardDescription className="mt-2">
+            Ingresa tus credenciales para acceder al sistema.
             </CardDescription>
         </CardHeader>
         <CardContent>

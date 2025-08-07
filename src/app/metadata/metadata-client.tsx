@@ -232,32 +232,6 @@ export default function MetadataClient() {
         <p className="text-muted-foreground mt-2 text-lg">
           Limpia y estandariza la metadata de tu PDF y ajústalo a tamaño carta.
         </p>
-        <div className="mt-6 flex justify-center gap-4 flex-wrap">
-            <Link href="/dashboard">
-                <Button variant="outline">
-                    <Combine className="mr-2 h-4 w-4" />
-                    Ir a Acta Fusion
-                </Button>
-            </Link>
-            <Link href="/bulk-fusion">
-                <Button variant="outline">
-                    <Files className="mr-2 h-4 w-4" />
-                    Ir a Fusión Masiva
-                </Button>
-            </Link>
-            <Link href="/frame">
-                <Button variant="outline">
-                    <Frame className="mr-2 h-4 w-4" />
-                    Enmarcar Acta
-                </Button>
-            </Link>
-            <Link href="/home">
-                <Button variant="secondary">
-                    <BarChart3 className="mr-2 h-4 w-4" />
-                    Ver Dashboard
-                </Button>
-            </Link>
-        </div>
       </header>
       
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -308,3 +282,5 @@ export default function MetadataClient() {
     </main>
   );
 }
+
+    

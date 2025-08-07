@@ -133,7 +133,7 @@ export default function ActaFusionClient() {
 
 
   return (
-    <main className="container mx-auto p-4 sm:p-6 lg:p-8 min-h-screen flex flex-col items-center">
+    <main className="container mx-auto p-4 sm:p-6 lg:p-8 flex flex-col items-center">
         <header className="w-full text-center mb-10">
             <h1 className="text-5xl font-bold text-primary font-headline">Panel de Control</h1>
             <p className="text-muted-foreground mt-2 text-lg">
@@ -218,6 +218,7 @@ export default function ActaFusionClient() {
                             endAngle={0}
                             innerRadius={80}
                             outerRadius={130}
+                            barSize={20}
                           >
                             <PolarAngleAxis
                               type="number"
@@ -227,7 +228,7 @@ export default function ActaFusionClient() {
                             />
                             <RadialBar
                               dataKey="value"
-                              background
+                              background={{ fill: 'hsla(var(--muted))' }}
                               cornerRadius={10}
                             />
                              <text
@@ -322,3 +323,5 @@ export default function ActaFusionClient() {
     </main>
   );
 }
+
+    

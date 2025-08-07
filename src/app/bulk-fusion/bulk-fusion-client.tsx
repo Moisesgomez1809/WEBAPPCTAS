@@ -287,12 +287,6 @@ export default function BulkFusionClient() {
         <p className="text-muted-foreground mt-2 text-lg">
           Sube múltiples actas de nacimiento para fusionarlas con su reverso oficial en lote.
         </p>
-         <div className="mt-6 flex justify-center gap-4 flex-wrap">
-            <Link href="/dashboard"><Button variant="outline">Fusión Individual</Button></Link>
-            <Link href="/frame"><Button variant="outline">Enmarcar Acta</Button></Link>
-            <Link href="/metadata"><Button variant="outline">Modificar Metadata</Button></Link>
-            <Link href="/home"><Button variant="secondary">Ver Dashboard</Button></Link>
-        </div>
       </header>
       
       <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
@@ -415,3 +409,5 @@ export default function BulkFusionClient() {
     </main>
   );
 }
+
+    
