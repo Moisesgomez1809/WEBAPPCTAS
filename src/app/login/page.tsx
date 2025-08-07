@@ -10,14 +10,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, LogIn } from 'lucide-react';
-import { verifyUser } from '../actions';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
   const { toast } = useToast();
-  const [username, setUsername] = useState('');
-  const [token, setToken] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -25,31 +26,43 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const isValid = await verifyUser(username, token);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
-      if (isValid) {
-        login(username, token);
+      // The onAuthStateChanged listener in AuthProvider will handle the session state.
+      // We call login() here just to immediately update the context if needed,
+      // though the listener is the source of truth.
+      if (userCredential.user) {
+        login(userCredential.user);
         toast({
           title: "Inicio de Sesión Exitoso",
           description: "¡Bienvenido! Serás redirigido.",
         });
         router.push('/home'); // Redirect to home/dashboard page
-      } else {
-        toast({
-          title: "Error de Inicio de Sesión",
-          description: "Usuario o token inválido. Por favor, inténtalo de nuevo.",
-          variant: "destructive",
-        });
-        setLoading(false);
       }
-    } catch (error) {
-      console.error(error);
+      
+    } catch (error: any) {
+      console.error("Firebase Auth Error:", error);
+      let description = "Ocurrió un error. Por favor, inténtalo de nuevo.";
+      switch (error.code) {
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':
+           description = "Correo electrónico o contraseña incorrectos.";
+           break;
+        case 'auth/invalid-email':
+           description = "El formato del correo electrónico no es válido.";
+           break;
+        case 'auth/too-many-requests':
+            description = "Demasiados intentos de inicio de sesión. Inténtalo de nuevo más tarde.";
+            break;
+      }
       toast({
-        title: "Error del Servidor",
-        description: "No se pudo verificar las credenciales. Inténtalo más tarde.",
+        title: "Error de Inicio de Sesión",
+        description,
         variant: "destructive",
       });
-      setLoading(false);
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -69,26 +82,26 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleLogin} className="mt-8 space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="username">Usuario</Label>
+              <Label htmlFor="email">Correo Electrónico</Label>
               <Input
-                id="username"
-                type="text"
-                placeholder="Ingresa tu usuario"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="email"
+                type="email"
+                placeholder="tu@correo.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
                 className="bg-background"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="token">Token</Label>
+              <Label htmlFor="password">Contraseña</Label>
               <Input
-                id="token"
+                id="password"
                 type="password"
-                placeholder="Ingresa tu token único"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
+                placeholder="Ingresa tu contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={loading}
                  className="bg-background"

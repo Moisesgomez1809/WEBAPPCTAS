@@ -3,12 +3,13 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { goOffline } from 'firebase/database';
-import { database } from '@/lib/firebase';
+import { database, auth } from '@/lib/firebase';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: { username: string; token: string } | null;
-  login: (username: string, token: string) => void;
+  user: User | null;
+  login: (user: User) => void; // Accept user object from Firebase Auth
   logout: () => void;
   isLoading: boolean;
 }
@@ -16,50 +17,55 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<{ username: string; token: string } | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+    // onAuthStateChanged is the key to session persistence.
+    // It fires once on load, and again whenever the auth state changes.
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        // User is signed in.
+        setUser(firebaseUser);
       } else {
-        goOffline(database);
+        // User is signed out.
+        setUser(null);
+        goOffline(database); // Ensure DB connection is closed if not authenticated.
       }
-    } catch (e) {
-      console.error("Failed to parse user from localStorage", e);
-      localStorage.removeItem('user');
-      goOffline(database);
-    } finally {
       setIsLoading(false);
-    }
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
-  const login = (username: string, token: string) => {
-    const userData = { username, token };
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
-    // The database guard will implicitly handle going online when it needs to fetch data.
-    // No need to call goOnline() here, to prevent multiple connections on hot-reloads.
+  const login = (firebaseUser: User) => {
+    // This function is now mostly for semantic purposes in the login page,
+    // as onAuthStateChanged is the source of truth for the user state.
+    setUser(firebaseUser);
+    // No need to call goOnline() here, it's handled implicitly when data is requested.
   };
 
-  const logout = () => {
-    // Explicitly close the Firebase connection.
-    goOffline(database);
-    
-    setUser(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('reverse-sides-db'); // Also clear the DB on logout
-    localStorage.removeItem('fusionCount');
-    localStorage.removeItem('folioCount');
-    localStorage.removeItem('frameCount');
-    localStorage.removeItem('metadataCount');
-    localStorage.removeItem('totalProfit');
-    localStorage.removeItem('totalProviderCost');
-    localStorage.removeItem('weeklyGoal');
-    localStorage.removeItem('isGoalLocked');
-
+  const logout = async () => {
+    try {
+        await signOut(auth); // This will trigger onAuthStateChanged, which will set user to null.
+        
+        // Explicitly close the Firebase database connection.
+        goOffline(database);
+        
+        // Also clear any local data
+        localStorage.removeItem('reverse-sides-db');
+        localStorage.removeItem('fusionCount');
+        localStorage.removeItem('folioCount');
+        localStorage.removeItem('frameCount');
+        localStorage.removeItem('metadataCount');
+        localStorage.removeItem('totalProfit');
+        localStorage.removeItem('totalProviderCost');
+        localStorage.removeItem('weeklyGoal');
+        localStorage.removeItem('isGoalLocked');
+    } catch (error) {
+        console.error("Error signing out: ", error);
+    }
   };
 
   return (

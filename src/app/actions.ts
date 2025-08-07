@@ -8,22 +8,6 @@ import { database } from '@/lib/firebase';
 import type { ReverseSideEntry } from '@/lib/types';
 
 
-export async function verifyUser(username: string, token: string): Promise<boolean> {
-  try {
-    const userRef = ref(database, `USERS/${username}`);
-    const snapshot = await get(userRef);
-
-    if (snapshot.exists()) {
-      const storedToken = snapshot.val();
-      return storedToken === token;
-    }
-    return false;
-  } catch (error) {
-    console.error("Firebase verification failed:", error);
-    return false;
-  }
-}
-
 export async function fetchReverseSidesFromDB(): Promise<ReverseSideEntry[]> {
   try {
     const reversosRef = ref(database, 'REVERSOS');
