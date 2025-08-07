@@ -18,7 +18,7 @@ let app: FirebaseApp;
 let auth: Auth;
 let database: Database;
 
-if (typeof window !== 'undefined' && !getApps().length) {
+if (getApps().length === 0) {
   app = initializeApp(firebaseConfig);
 } else {
   app = getApp();
