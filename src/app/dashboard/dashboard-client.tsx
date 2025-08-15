@@ -14,6 +14,8 @@ import type { ReverseSideEntry } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import curpStates from '@/lib/data/curp-states.json';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
@@ -378,9 +380,9 @@ export default function DashboardClient() {
         <div className="flex flex-col space-y-8">
             <Card>
                 <CardHeader>
-                    <CardTitle>Verificador de Entidad por CURP</CardTitle>
+                    <CardTitle>Verificador de Entidad de Nacimiento por CURP</CardTitle>
                     <CardDescription>
-                        Ingresa una CURP para determinar el estado de nacimiento.
+                        Ingresa una CURP para determinar el estado de nacimiento. Esta información es una guía y puede no coincidir con la entidad de registro.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -399,7 +401,7 @@ export default function DashboardClient() {
                     </div>
                     {birthStateResult && (
                         <Alert>
-                            <AlertTitle>Resultado</AlertTitle>
+                            <AlertTitle>Entidad de Nacimiento</AlertTitle>
                             <AlertDescription className="font-semibold text-primary">
                                 {birthStateResult}
                             </AlertDescription>
@@ -454,3 +456,5 @@ export default function DashboardClient() {
     </main>
   );
 }
+
+    
