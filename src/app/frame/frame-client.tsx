@@ -13,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { ReverseSideEntry } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import UtilitiesCalculator from '@/components/utilities-calculator';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 type LoadingStep = 'idle' | 'finding_frame' | 'framing' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'done';
@@ -63,10 +62,6 @@ export default function FrameClient() {
   const [entity, setEntity] = useState<string | null>(null);
   const [extractedCurp, setExtractedCurp] = useState<string | null>(null);
   
-  const [providerCost, setProviderCost] = useState('');
-  const [clientCost, setClientCost] = useState('');
-  const [profit, setProfit] = useState(0);
-
   const { toast } = useToast();
   const router = useRouter();
 
@@ -89,12 +84,6 @@ export default function FrameClient() {
     }
   }, [router, toast]);
   
-  useEffect(() => {
-    const pCost = parseFloat(providerCost) || 0;
-    const cCost = parseFloat(clientCost) || 0;
-    setProfit(cCost - pCost);
-  }, [providerCost, clientCost]);
-
   const handleReset = useCallback(() => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setOriginalFile(null);
@@ -107,8 +96,6 @@ export default function FrameClient() {
     setEntity(null);
     setManualEntity("");
     setExtractedCurp(null);
-    setProviderCost('');
-    setClientCost('');
   }, [previewUrl]);
 
   const handleFileChange = (file: File | null) => {
@@ -130,20 +117,6 @@ export default function FrameClient() {
     if (!finalPdfUrl) return;
 
     try {
-      const pCost = parseFloat(providerCost) || 0;
-      if (profit > 0 || pCost > 0) {
-        const currentProfit = parseFloat(localStorage.getItem('totalProfit') || '0');
-        localStorage.setItem('totalProfit', (currentProfit + profit).toString());
-        
-        const currentProviderCost = parseFloat(localStorage.getItem('totalProviderCost') || '0');
-        localStorage.setItem('totalProviderCost', (currentProviderCost + pCost).toString());
-
-        toast({
-            title: "Estadísticas Guardadas",
-            description: `Se registró la utilidad y el costo del trámite.`,
-        });
-      }
-
       const currentCount = parseInt(localStorage.getItem('frameCount') || '0', 10);
       localStorage.setItem('frameCount', (currentCount + 1).toString());
 
@@ -298,13 +271,6 @@ export default function FrameClient() {
             <Download className="mr-2 h-4 w-4" /> Descargar PDF Final
           </Button>
         )}
-         <UtilitiesCalculator
-          providerCost={providerCost}
-          clientCost={clientCost}
-          profit={profit}
-          onProviderCostChange={setProviderCost}
-          onClientCostChange={setClientCost}
-        />
       </CardContent>
       <CardFooter className="flex-col sm:flex-row gap-2 justify-between items-center">
         {entity && status !== 'loading' && (
@@ -370,5 +336,3 @@ export default function FrameClient() {
     </main>
   );
 }
-
-    

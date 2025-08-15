@@ -79,10 +79,6 @@ export default function DashboardClient() {
   const [extractedCurp, setExtractedCurp] = useState<string | null>(null);
   const [addFolio, setAddFolio] = useState(false);
   
-  const [providerCost, setProviderCost] = useState('');
-  const [clientCost, setClientCost] = useState('');
-  const [profit, setProfit] = useState(0);
-
   const { toast } = useToast();
   const router = useRouter();
 
@@ -104,12 +100,6 @@ export default function DashboardClient() {
     }
   }, [router, toast]);
 
-  useEffect(() => {
-    const pCost = parseFloat(providerCost) || 0;
-    const cCost = parseFloat(clientCost) || 0;
-    setProfit(cCost - pCost);
-  }, [providerCost, clientCost]);
-
 
   const handleReset = useCallback(() => {
     if (previewUrl) {
@@ -126,8 +116,6 @@ export default function DashboardClient() {
     setManualEntity("");
     setExtractedCurp(null);
     setAddFolio(false);
-    setProviderCost('');
-    setClientCost('');
   }, [previewUrl]);
 
   const handleFileChange = (file: File | null) => {
@@ -176,20 +164,6 @@ export default function DashboardClient() {
   
   const handleDownloadAndSave = (url: string, name: string) => {
      try {
-      const pCost = parseFloat(providerCost) || 0;
-      if (profit > 0 || pCost > 0) {
-        const currentProfit = parseFloat(localStorage.getItem('totalProfit') || '0');
-        localStorage.setItem('totalProfit', (currentProfit + profit).toString());
-        
-        const currentProviderCost = parseFloat(localStorage.getItem('totalProviderCost') || '0');
-        localStorage.setItem('totalProviderCost', (currentProviderCost + pCost).toString());
-
-        toast({
-            title: "Estadísticas Guardadas",
-            description: `Se registró la utilidad y el costo del trámite.`,
-        });
-      }
-
       const currentFusionCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
       localStorage.setItem('fusionCount', (currentFusionCount + 1).toString());
 
@@ -225,7 +199,7 @@ export default function DashboardClient() {
     });
     handleDownloadAndSave(finalPdf, curp ? `${curp}.pdf` : 'acta-fusionada.pdf');
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addFolio, profit, providerCost]);
+  }, [addFolio]);
 
 
   const processFusion = async (entityToUse: string) => {
@@ -354,13 +328,6 @@ export default function DashboardClient() {
           </Button>
         )}
         
-        <UtilitiesCalculator
-          providerCost={providerCost}
-          clientCost={clientCost}
-          profit={profit}
-          onProviderCostChange={setProviderCost}
-          onClientCostChange={setClientCost}
-        />
       </CardContent>
       <CardFooter className="flex-col sm:flex-row gap-2 justify-between items-center">
          {entity && status !== 'loading' && (
@@ -430,5 +397,3 @@ export default function DashboardClient() {
     </main>
   );
 }
-
-    

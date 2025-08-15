@@ -32,12 +32,10 @@ import { ChartContainer } from '@/components/ui/chart';
 
 interface Stats {
   total: number;
-  profit: number;
-  providerCost: number;
 }
 
 export default function ActaFusionClient() {
-  const [stats, setStats] = useState<Stats>({ total: 0, profit: 0, providerCost: 0 });
+  const [stats, setStats] = useState<Stats>({ total: 0 });
   const [weeklyGoal, setWeeklyGoal] = useState<number | null>(null);
   const [isGoalLocked, setIsGoalLocked] = useState(false);
 
@@ -50,13 +48,9 @@ export default function ActaFusionClient() {
     const folios = parseInt(localStorage.getItem('folioCount') || '0', 10);
     const frames = parseInt(localStorage.getItem('frameCount') || '0', 10);
     const metadata = parseInt(localStorage.getItem('metadataCount') || '0', 10);
-    const profit = parseFloat(localStorage.getItem('totalProfit') || '0');
-    const providerCost = parseFloat(localStorage.getItem('totalProviderCost') || '0');
     
     setStats({
       total: fusions + folios + frames + metadata,
-      profit,
-      providerCost,
     });
 
     // Load weekly goal state
@@ -73,12 +67,10 @@ export default function ActaFusionClient() {
         localStorage.setItem('folioCount', '0');
         localStorage.setItem('frameCount', '0');
         localStorage.setItem('metadataCount', '0');
-        localStorage.setItem('totalProfit', '0');
-        localStorage.setItem('totalProviderCost', '0');
         localStorage.removeItem('weeklyGoal');
         localStorage.removeItem('isGoalLocked');
 
-        setStats({ total: 0, profit: 0, providerCost: 0 });
+        setStats({ total: 0 });
         setWeeklyGoal(null);
         setIsGoalLocked(false);
         
@@ -96,7 +88,6 @@ export default function ActaFusionClient() {
     }
   };
 
-  const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
 
   const totalTrámites = stats.total;
   const maxTrámites = 1000;
@@ -142,20 +133,8 @@ export default function ActaFusionClient() {
         </header>
 
         <div className="w-full max-w-5xl space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                 <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Compra a Proveedor</CardTitle>
-                        <ShoppingCart className="h-5 w-5 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-4xl font-bold text-destructive">
-                           {formatCurrency(stats.providerCost)}
-                        </div>
-                        <p className="text-xs text-muted-foreground pt-1">Suma total de costo de proveedor</p>
-                    </CardContent>
-                </Card>
-                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 col-span-full">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Trámites Totales</CardTitle>
                         <BarChart3 className="h-5 w-5 text-muted-foreground" />
@@ -167,18 +146,6 @@ export default function ActaFusionClient() {
                         </p>
                         <Progress value={progressPercentage} className="mt-4 h-2" />
                          <p className="text-xs text-muted-foreground pt-1 text-right">{progressPercentage.toFixed(1)}%</p>
-                    </CardContent>
-                </Card>
-                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Utilidad Total</CardTitle>
-                        <Wallet className="h-5 w-5 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-4xl font-bold text-green-600">
-                            {formatCurrency(stats.profit)}
-                        </div>
-                        <p className="text-xs text-muted-foreground pt-1">Ganancia neta de todos los trámites</p>
                     </CardContent>
                 </Card>
             </div>
@@ -323,5 +290,3 @@ export default function ActaFusionClient() {
     </main>
   );
 }
-
-    

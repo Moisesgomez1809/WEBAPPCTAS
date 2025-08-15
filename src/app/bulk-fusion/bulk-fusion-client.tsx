@@ -23,9 +23,6 @@ interface QueueItem {
   resultUrl?: string;
   error?: string;
   curp?: string;
-  providerCost: number;
-  clientCost: number;
-  profit: number;
 }
 
 interface RawFile {
@@ -61,10 +58,6 @@ export default function BulkFusionClient() {
   const [currentPreviewUrl, setCurrentPreviewUrl] = useState<string | null>(null);
   const [selectedState, setSelectedState] = useState<string>('');
   
-  const [providerCost, setProviderCost] = useState('');
-  const [clientCost, setClientCost] = useState('');
-  const [profit, setProfit] = useState(0);
-
   const { toast } = useToast();
 
   const activeFile = rawFiles.length > 0 ? rawFiles[0] : null;
@@ -95,11 +88,6 @@ export default function BulkFusionClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFile]);
 
-  useEffect(() => {
-    const pCost = parseFloat(providerCost) || 0;
-    const cCost = parseFloat(clientCost) || 0;
-    setProfit(cCost - pCost);
-  }, [providerCost, clientCost]);
 
   const handleFileChange = (files: FileList | null) => {
     if (files) {
@@ -125,14 +113,10 @@ export default function BulkFusionClient() {
         file: activeFile.file,
         state: selectedState,
         status: 'pending',
-        providerCost: parseFloat(providerCost) || 0,
-        clientCost: parseFloat(clientCost) || 0,
-        profit: profit
     };
     setProcessingQueue(prev => [...prev, newItem]);
     setRawFiles(prev => prev.slice(1)); // Remove the processed file from raw files
     setSelectedState(''); // Reset select
-    // No reseteamos los costos para que se puedan reusar en el siguiente archivo
   };
 
   const handleRemoveFromQueue = (id: string) => {
@@ -157,8 +141,6 @@ export default function BulkFusionClient() {
     
     setIsProcessing(true);
     const successfulDownloads: { url: string; name: string }[] = [];
-    let totalProfitThisSession = 0;
-    let totalProviderCostThisSession = 0;
 
     const promises = itemsToProcess.map(async (item) => {
       try {
@@ -187,9 +169,6 @@ export default function BulkFusionClient() {
         const currentFusionCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
         localStorage.setItem('fusionCount', (currentFusionCount + 1).toString());
         
-        totalProfitThisSession += item.profit;
-        totalProviderCostThisSession += item.providerCost;
-
         return { ...item, status: 'success' as 'success', resultUrl: finalPdf, curp };
 
       } catch (e: any) {
@@ -210,20 +189,6 @@ export default function BulkFusionClient() {
         }
     }
     
-    // Save totals from this session to localStorage
-    if (totalProfitThisSession > 0 || totalProviderCostThisSession > 0) {
-        const currentTotalProfit = parseFloat(localStorage.getItem('totalProfit') || '0');
-        localStorage.setItem('totalProfit', (currentTotalProfit + totalProfitThisSession).toString());
-
-        const currentTotalProviderCost = parseFloat(localStorage.getItem('totalProviderCost') || '0');
-        localStorage.setItem('totalProviderCost', (currentTotalProviderCost + totalProviderCostThisSession).toString());
-        
-        toast({
-            title: "Estadísticas Guardadas",
-            description: `Se procesaron las ganancias y costos de la sesión.`,
-        });
-    }
-
     setIsProcessing(false);
     toast({ title: 'Proceso Completado', description: 'Se han procesado todos los archivos. Las descargas comenzarán ahora.' });
     
@@ -269,16 +234,12 @@ export default function BulkFusionClient() {
     setRawFiles([]);
     setProcessingQueue([]);
     setSelectedState('');
-    setProviderCost('');
-    setClientCost('');
     if (currentPreviewUrl) {
       URL.revokeObjectURL(currentPreviewUrl);
       setCurrentPreviewUrl(null);
     }
   };
   
-  const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
-
 
   return (
     <main className="container mx-auto p-4 sm:p-6 lg:p-8 min-h-screen flex flex-col">
@@ -295,7 +256,7 @@ export default function BulkFusionClient() {
             <Card>
                 <CardHeader>
                     <CardTitle>1. Cargar y Configurar Archivos</CardTitle>
-                    <CardDescription>Arrastra archivos, luego visualízalos y asígnales un estado y costo para añadirlos a la lista de procesamiento.</CardDescription>
+                    <CardDescription>Arrastra archivos, luego visualízalos y asígnales un estado para añadirlos a la lista de procesamiento.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {!activeFile ? (
@@ -331,13 +292,6 @@ export default function BulkFusionClient() {
                                     {availableStates.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <UtilitiesCalculator
-                                providerCost={providerCost}
-                                clientCost={clientCost}
-                                profit={profit}
-                                onProviderCostChange={setProviderCost}
-                                onClientCostChange={setClientCost}
-                            />
                             <Button onClick={handleAddToList} disabled={!selectedState} className="w-full">
                                 <ListPlus className="mr-2 h-4 w-4" /> Añadir a la Lista ({rawFiles.length - 1} restantes)
                             </Button>
@@ -362,11 +316,8 @@ export default function BulkFusionClient() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[30%]">Archivo</TableHead>
+                                        <TableHead className="w-[40%]">Archivo</TableHead>
                                         <TableHead>Estado</TableHead>
-                                        <TableHead>Costo</TableHead>
-                                        <TableHead>Venta</TableHead>
-                                        <TableHead>Ganancia</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead className="text-right">Acción</TableHead>
                                     </TableRow>
@@ -376,9 +327,6 @@ export default function BulkFusionClient() {
                                         <TableRow key={item.id}>
                                             <TableCell className="font-medium truncate max-w-[120px]">{item.file.name}</TableCell>
                                             <TableCell>{item.state}</TableCell>
-                                            <TableCell>{formatCurrency(item.providerCost)}</TableCell>
-                                            <TableCell>{formatCurrency(item.clientCost)}</TableCell>
-                                            <TableCell className="text-green-600 font-medium">{formatCurrency(item.profit)}</TableCell>
                                             <TableCell>{renderStatusIcon(item)}</TableCell>
                                             <TableCell className="text-right">{renderActionCell(item)}</TableCell>
                                         </TableRow>
@@ -409,5 +357,3 @@ export default function BulkFusionClient() {
     </main>
   );
 }
-
-    

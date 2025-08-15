@@ -9,7 +9,6 @@ import { FileUp, Download, Loader2, FileCheck2, AlertCircle, RefreshCcw, BarChar
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
 import { modifyMetadataAndResizeClient } from '@/lib/pdf-utils';
-import UtilitiesCalculator from '@/components/utilities-calculator';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
@@ -23,16 +22,6 @@ export default function MetadataClient() {
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
 
-  const [providerCost, setProviderCost] = useState('');
-  const [clientCost, setClientCost] = useState('');
-  const [profit, setProfit] = useState(0);
-
-  useEffect(() => {
-    const pCost = parseFloat(providerCost) || 0;
-    const cCost = parseFloat(clientCost) || 0;
-    setProfit(cCost - pCost);
-  }, [providerCost, clientCost]);
-
   const handleReset = useCallback(() => {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
@@ -43,8 +32,6 @@ export default function MetadataClient() {
     setModifiedPdfUrl(null);
     setStatus('idle');
     setError(null);
-    setProviderCost('');
-    setClientCost('');
   }, [previewUrl]);
 
   const handleFileChange = (file: File | null) => {
@@ -94,20 +81,6 @@ export default function MetadataClient() {
     if (!modifiedPdfUrl) return;
 
     try {
-      const pCost = parseFloat(providerCost) || 0;
-      if (profit > 0 || pCost > 0) {
-        const currentProfit = parseFloat(localStorage.getItem('totalProfit') || '0');
-        localStorage.setItem('totalProfit', (currentProfit + profit).toString());
-
-        const currentProviderCost = parseFloat(localStorage.getItem('totalProviderCost') || '0');
-        localStorage.setItem('totalProviderCost', (currentProviderCost + pCost).toString());
-
-        toast({
-            title: "Estadísticas Guardadas",
-            description: `Se registró la utilidad y el costo del trámite.`,
-        });
-      }
-
       const currentCount = parseInt(localStorage.getItem('metadataCount') || '0', 10);
       localStorage.setItem('metadataCount', (currentCount + 1).toString());
 
@@ -121,7 +94,7 @@ export default function MetadataClient() {
       console.error("Failed to save data or download", e);
       toast({
         title: "Error",
-        description: "No se pudo guardar la utilidad o descargar el archivo.",
+        description: "No se pudo descargar el archivo.",
         variant: "destructive",
       });
     }
@@ -208,14 +181,6 @@ export default function MetadataClient() {
               <Download className="mr-2 h-4 w-4" /> Descargar PDF Modificado
           </Button>
         )}
-        
-        <UtilitiesCalculator
-          providerCost={providerCost}
-          clientCost={clientCost}
-          profit={profit}
-          onProviderCostChange={setProviderCost}
-          onClientCostChange={setClientCost}
-        />
       </CardContent>
       <CardFooter>
          <Button onClick={handleReset} variant="outline" className="w-full">
@@ -282,5 +247,3 @@ export default function MetadataClient() {
     </main>
   );
 }
-
-    
