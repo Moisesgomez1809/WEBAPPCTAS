@@ -5,17 +5,15 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, Frame, FileCog, BarChart3, Files } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, Frame, FileCog, BarChart3, Files, Search } from 'lucide-react';
 import { getReversePdfAsDataUri, extractDocumentDetails } from '../actions';
 import { mergePdfsClient, modifyReversePdfClient, addFolioToPdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ReverseSideEntry } from '@/lib/types';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import UtilitiesCalculator from '@/components/utilities-calculator';
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Input } from '@/components/ui/input';
+import curpStates from '@/lib/data/curp-states.json';
 
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
@@ -78,6 +76,8 @@ export default function DashboardClient() {
   const [availableStates, setAvailableStates] = useState<string[]>([]);
   const [extractedCurp, setExtractedCurp] = useState<string | null>(null);
   const [addFolio, setAddFolio] = useState(false);
+  const [curpQuery, setCurpQuery] = useState('');
+  const [birthStateResult, setBirthStateResult] = useState<string | null>(null);
   
   const { toast } = useToast();
   const router = useRouter();
@@ -275,6 +275,31 @@ export default function DashboardClient() {
     }
   };
 
+  const handleCurpLookup = () => {
+    setBirthStateResult(null);
+    if (curpQuery.length !== 18) {
+        toast({
+            title: "CURP Inválida",
+            description: "La CURP debe tener exactamente 18 caracteres.",
+            variant: "destructive",
+        });
+        return;
+    }
+    const stateCode = curpQuery.substring(11, 13).toUpperCase();
+    const stateName = (curpStates as Record<string, string>)[stateCode];
+
+    if (stateName) {
+        setBirthStateResult(stateName);
+    } else {
+        setBirthStateResult("Código de entidad no reconocido.");
+         toast({
+            title: "Código de Entidad no Encontrado",
+            description: `El código "${stateCode}" no corresponde a una entidad federativa válida.`,
+            variant: "destructive",
+        });
+    }
+  };
+
   const renderDropzone = () => (
      <div
       onDrop={handleDrop} onDragOver={handleDragOver} onDragEnter={handleDragEnter} onDragLeave={handleDragLeave}
@@ -351,6 +376,38 @@ export default function DashboardClient() {
       
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="flex flex-col space-y-8">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Verificador de Entidad por CURP</CardTitle>
+                    <CardDescription>
+                        Ingresa una CURP para determinar el estado de nacimiento.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex w-full items-center space-x-2">
+                         <Input
+                            type="text"
+                            placeholder="Ingresa la CURP de 18 caracteres"
+                            value={curpQuery}
+                            onChange={(e) => setCurpQuery(e.target.value.toUpperCase())}
+                            maxLength={18}
+                            className="font-mono"
+                        />
+                        <Button onClick={handleCurpLookup}>
+                            <Search className="mr-2 h-4 w-4" /> Verificar
+                        </Button>
+                    </div>
+                    {birthStateResult && (
+                        <Alert>
+                            <AlertTitle>Resultado</AlertTitle>
+                            <AlertDescription className="font-semibold text-primary">
+                                {birthStateResult}
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                </CardContent>
+            </Card>
+
             {originalFile ? renderProcessingState() : renderDropzone()}
             {error && (
             <Alert variant="destructive">
