@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, Frame, FileCog, BarChart3, Files, Search } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, Frame, FileCog, BarChart3, Files, Search, ScanLine } from 'lucide-react';
 import { getReversePdfAsDataUri, extractDocumentDetails } from '../actions';
 import { mergePdfsClient, modifyReversePdfClient, addFolioToPdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
@@ -16,10 +15,19 @@ import { Input } from '@/components/ui/input';
 import curpStates from '@/lib/data/curp-states.json';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-
+import { extractDataFromPdf } from '@/lib/ocr-utils';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 type LoadingStep = 'idle' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'foliating' | 'done';
+type OcrStatus = 'idle' | 'processing' | 'success' | 'error';
+type OperationMode = 'manual' | 'ocr';
+
+interface OcrData {
+  curp: string | null;
+  electronicId: string | null;
+  issuingEntity: string | null;
+}
+
 
 const loadingMessages: Record<LoadingStep, string> = {
   idle: 'Esperando para empezar...',
@@ -90,7 +98,10 @@ export default function DashboardClient() {
   const [addFolio, setAddFolio] = useState(false);
   const [curpQuery, setCurpQuery] = useState('');
   const [birthStateResult, setBirthStateResult] = useState<string | null>(null);
-  
+  const [mode, setMode] = useState<OperationMode>('manual');
+  const [ocrStatus, setOcrStatus] = useState<OcrStatus>('idle');
+  const [ocrData, setOcrData] = useState<OcrData | null>(null);
+
   const { toast } = useToast();
   const router = useRouter();
 
@@ -128,6 +139,8 @@ export default function DashboardClient() {
     setManualEntity("");
     setExtractedCurp(null);
     setAddFolio(false);
+    setOcrStatus('idle');
+    setOcrData(null);
   }, [previewUrl]);
 
   const handleFileChange = (file: File | null) => {
@@ -140,7 +153,11 @@ export default function DashboardClient() {
 
       const reader = new FileReader();
       reader.onload = (e) => {
-        setOriginalPdfUrl(e.target?.result as string);
+        const dataUri = e.target?.result as string;
+        setOriginalPdfUrl(dataUri);
+        if (mode === 'ocr') {
+            handleOcrProcess(dataUri);
+        }
       };
       reader.readAsDataURL(file);
       setError(null);
@@ -153,6 +170,28 @@ export default function DashboardClient() {
       })
     }
   };
+
+   const handleOcrProcess = async (dataUri: string) => {
+    setOcrStatus('processing');
+    setOcrData(null);
+    try {
+      const data = await extractDataFromPdf(dataUri);
+      setOcrData(data);
+      setOcrStatus('success');
+
+      if (!data.curp && !data.electronicId && !data.issuingEntity) {
+        toast({ title: "OCR Sin Resultados", description: "No se encontró información clave.", variant: "destructive" });
+      } else {
+        toast({ title: "OCR Completado", description: "Verifica los datos extraídos." });
+      }
+      
+    } catch (e: any) {
+        setOcrStatus('error');
+        setError(e.message || "Falló el proceso de OCR.");
+        toast({ title: 'Error de OCR', description: e.message, variant: 'destructive' });
+    }
+  };
+
   
   const setMergedPreview = async (mergedDataUri: string) => {
     try {
@@ -229,11 +268,11 @@ export default function DashboardClient() {
   }, [addFolio]);
 
 
-  const processFusion = async (entityToUse: string) => {
+  const processFusion = async (entityToUse: string | null) => {
     if (!originalPdfUrl || !entityToUse) {
        toast({
         title: "Selección Requerida",
-        description: "Por favor, selecciona un estado antes de fusionar.",
+        description: "Por favor, selecciona un estado o usa el modo OCR.",
         variant: "destructive",
       });
       return;
@@ -249,7 +288,7 @@ export default function DashboardClient() {
       const { curp, electronicId } = await extractDocumentDetails({ pdfDataUri: originalPdfUrl });
       
       if (!curp || !electronicId) {
-          throw new Error("No se pudo extraer la CURP o el Identificador Electrónico. Asegúrate de que el documento sea claro.");
+          throw new Error("No se pudo extraer la CURP o el Identificador Electrónico con la IA. Asegúrate de que el documento sea claro.");
       }
       
       setExtractedCurp(curp);
@@ -339,6 +378,74 @@ export default function DashboardClient() {
       <input id="file-upload" type="file" className="hidden" accept="application/pdf" onChange={(e) => handleFileChange(e.target.files ? e.target.files[0] : null)} />
     </div>
   );
+  
+  const renderOcrResults = () => {
+    if (mode !== 'ocr' || !originalFile) return null;
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Resultados del OCR</CardTitle>
+                <CardDescription>Datos extraídos del documento. Verifícalos antes de fusionar.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {ocrStatus === 'processing' && (
+                    <div className="flex items-center justify-center space-x-2 p-4">
+                        <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                        <p className="text-muted-foreground">Escaneando documento...</p>
+                    </div>
+                )}
+                {ocrStatus === 'success' && ocrData && (
+                    <div className="space-y-3 font-mono text-sm">
+                        <div>
+                          <p className="font-semibold text-muted-foreground">CURP:</p>
+                          <p className="text-primary font-bold">{ocrData.curp || <span className="text-destructive">No encontrado</span>}</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-muted-foreground">ID Electrónico:</p>
+                          <p>{ocrData.electronicId || <span className="text-destructive">No encontrado</span>}</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-muted-foreground">Entidad de Registro:</p>
+                          <p>{ocrData.issuingEntity || <span className="text-destructive">No encontrada</span>}</p>
+                        </div>
+                    </div>
+                )}
+                {ocrStatus === 'error' && <p className="text-destructive">Falló el OCR. Intenta en modo manual.</p>}
+            </CardContent>
+            {ocrStatus === 'success' && (
+                <CardFooter>
+                     <Button onClick={() => processFusion(ocrData?.issuingEntity ?? null)} disabled={!ocrData?.issuingEntity || status === 'loading'} className="w-full">
+                        {status === 'loading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                         Validar y Fusionar
+                    </Button>
+                </CardFooter>
+            )}
+        </Card>
+    );
+  };
+
+  const renderManualMode = () => {
+     if (mode !== 'manual' || !originalFile || status === 'loading' || status === 'success') return null;
+
+     return (
+         <div className="pt-4 space-y-4">
+            <p className="text-sm text-muted-foreground">Selecciona el estado emisor del acta para encontrar el reverso correcto.</p>
+            <Select onValueChange={setManualEntity} value={manualEntity}>
+            <SelectTrigger>
+                <SelectValue placeholder="Selecciona un estado..." />
+            </SelectTrigger>
+            <SelectContent>
+                {availableStates.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
+            </SelectContent>
+            </Select>
+            
+            <Button onClick={() => processFusion(manualEntity)} disabled={!manualEntity} className="w-full">
+            <Sparkles className="mr-2 h-4 w-4" /> Fusionar Documentos
+            </Button>
+        </div>
+     )
+  }
 
   const renderProcessingState = () => (
     <Card>
@@ -347,43 +454,29 @@ export default function DashboardClient() {
         <CardDescription>{originalFile?.name}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {status === 'loading' ? (
+        {status === 'loading' && (
           <div className="flex flex-col items-center justify-center space-y-4 p-8 bg-background rounded-lg">
             <Loader2 className="w-12 h-12 text-primary animate-spin" />
             <p className="text-lg font-medium text-foreground">{loadingMessages[loadingStep]}</p>
             {entity && <p className="text-sm text-muted-foreground">Procesando para: {entity}</p>}
           </div>
-        ) : (
-          <div className="pt-4 space-y-4">
-              <p className="text-sm text-muted-foreground">Selecciona el estado emisor del acta de nacimiento para encontrar el reverso correcto.</p>
-               <Select onValueChange={setManualEntity} value={manualEntity}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un estado..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableStates.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
-                </SelectContent>
-              </Select>
-               <div className="flex items-center space-x-2 pt-4">
-                  <Switch id="folio-switch" checked={addFolio} onCheckedChange={setAddFolio} />
-                  <Label htmlFor="folio-switch">¿Añadir Folio?</Label>
-               </div>
-              <Button onClick={() => processFusion(manualEntity)} disabled={!manualEntity} className="w-full">
-                <Sparkles className="mr-2 h-4 w-4" /> Fusionar Documentos
-              </Button>
-            </div>
         )}
 
         {status === 'success' && combinedPdfUrl && (
-          <Button onClick={() => handleDownloadAndSave(combinedPdfUrl, extractedCurp ? `${extractedCurp}.pdf` : 'acta-fusionada.pdf')} className="w-full bg-green-500 hover:bg-green-600 text-white">
-            <Download className="mr-2 h-4 w-4" /> Descargar PDF Fusionado
-          </Button>
+            <div className="text-center p-4">
+                <FileCheck2 className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold">Proceso Completado</h3>
+                 <Button onClick={() => handleDownloadAndSave(combinedPdfUrl, extractedCurp ? `${extractedCurp}.pdf` : 'acta-fusionada.pdf')} className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white">
+                    <Download className="mr-2 h-4 w-4" /> Descargar PDF Fusionado
+                </Button>
+            </div>
         )}
         
+        {renderManualMode()}
       </CardContent>
       <CardFooter className="flex-col sm:flex-row gap-2 justify-between items-center">
          {entity && status !== 'loading' && (
-            <p className="text-sm text-muted-foreground">Entidad Seleccionada: <strong>{entity}</strong></p>
+            <p className="text-sm text-muted-foreground">Entidad Procesada: <strong>{entity}</strong></p>
          )}
          <Button onClick={handleReset} variant="outline" className="w-full sm:w-auto mt-2 sm:mt-0 ml-auto">
             <RefreshCcw className="mr-2 h-4 w-4" /> Empezar de Nuevo
@@ -405,43 +498,77 @@ export default function DashboardClient() {
         <div className="flex flex-col space-y-8">
             <Card>
                 <CardHeader>
-                    <CardTitle>Verificador de Entidad de Nacimiento por CURP</CardTitle>
-                    <CardDescription>
-                        Ingresa una CURP para determinar el estado de nacimiento. Esta información es una guía y puede no coincidir con la entidad de registro.
-                    </CardDescription>
+                    <CardTitle>Configuración</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="flex w-full items-center space-x-2">
-                         <Input
-                            type="text"
-                            placeholder="Ingresa la CURP de 18 caracteres"
-                            value={curpQuery}
-                            onChange={(e) => setCurpQuery(e.target.value.toUpperCase())}
-                            maxLength={18}
-                            className="font-mono"
-                        />
-                        <Button onClick={handleCurpLookup}>
-                            <Search className="mr-2 h-4 w-4" /> Verificar
-                        </Button>
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                            <Label htmlFor="mode-switch" className="text-base">Modo de Operación</Label>
+                            <p className="text-sm text-muted-foreground">
+                                Elige OCR para automático o Manual para seleccionar el estado.
+                            </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                           <Label htmlFor="mode-switch" className={mode === 'manual' ? 'font-bold text-primary' : ''}>Manual</Label>
+                            <Switch 
+                                id="mode-switch"
+                                checked={mode === 'ocr'}
+                                onCheckedChange={(checked) => setMode(checked ? 'ocr' : 'manual')}
+                            />
+                            <Label htmlFor="mode-switch" className={mode === 'ocr' ? 'font-bold text-primary' : ''}>OCR</Label>
+                        </div>
                     </div>
-                    {birthStateResult && (
-                        <Alert>
-                            <AlertTitle>Entidad de Nacimiento</AlertTitle>
-                            <AlertDescription className="font-semibold text-primary">
-                                {birthStateResult}
-                            </AlertDescription>
-                        </Alert>
-                    )}
+                    <div className="flex items-center space-x-2 pt-4">
+                        <Switch id="folio-switch" checked={addFolio} onCheckedChange={setAddFolio} />
+                        <Label htmlFor="folio-switch">¿Añadir Folio?</Label>
+                    </div>
                 </CardContent>
             </Card>
 
-            {originalFile ? renderProcessingState() : renderDropzone()}
+            {originalFile ? (status === 'idle' ? renderOcrResults() : renderProcessingState()) : renderDropzone()}
+
+            {mode === 'manual' && originalFile && status === 'idle' && renderManualMode()}
+
             {error && (
             <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Error</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
             </Alert>
+            )}
+            
+            {status !== 'success' && status !== 'loading' && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Verificador de Entidad por CURP</CardTitle>
+                        <CardDescription>
+                            Ingresa una CURP para determinar el estado de nacimiento como guía.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex w-full items-center space-x-2">
+                             <Input
+                                type="text"
+                                placeholder="Ingresa la CURP de 18 caracteres"
+                                value={curpQuery}
+                                onChange={(e) => setCurpQuery(e.target.value.toUpperCase())}
+                                maxLength={18}
+                                className="font-mono"
+                            />
+                            <Button onClick={handleCurpLookup}>
+                                <Search className="mr-2 h-4 w-4" /> Verificar
+                            </Button>
+                        </div>
+                        {birthStateResult && (
+                            <Alert>
+                                <AlertTitle>Entidad de Nacimiento Sugerida</AlertTitle>
+                                <AlertDescription className="font-semibold text-primary">
+                                    {birthStateResult}
+                                </AlertDescription>
+                            </Alert>
+                        )}
+                    </CardContent>
+                </Card>
             )}
         </div>
         
@@ -464,7 +591,7 @@ export default function DashboardClient() {
                      <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-8">
                         <AlertCircle className="w-16 h-16 mx-auto mb-4 text-destructive"/>
                         <p className="font-semibold">No se puede mostrar la vista previa del PDF.</p>
-                        <p className="text-sm">Es posible que tu navegador no admita vistas previas incrustadas. Aún puedes procesar y descargar el archivo.</p>
+                        <p className="text-sm">Es posible que tu navegador no admita vistas previas incrustadas.</p>
                       </div>
                   </object>
                 ) : (
@@ -481,5 +608,3 @@ export default function DashboardClient() {
     </main>
   );
 }
-
-    

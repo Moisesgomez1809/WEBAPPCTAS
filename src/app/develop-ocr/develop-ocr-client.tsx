@@ -1,20 +1,14 @@
-
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FileUp, Loader2, AlertCircle, RefreshCcw, ScanText, FileCheck2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import * as pdfjsLib from "pdfjs-dist";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
-
-// Configure the worker to use the local file from node_modules.
-// This is the correct way for Next.js to avoid CDN and CORS issues.
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.mjs`;
-
+import { extractDataFromPdf } from '@/lib/ocr-utils';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
@@ -23,35 +17,6 @@ interface ExtractedData {
   electronicId: string | null;
   issuingEntity: string | null;
 }
-
-async function extraerDatosEspeciales(text: string): Promise<ExtractedData> {
-    // Regex for CURP (standard format)
-    const curpRegex = /([A-Z][AEIOUX][A-Z]{2}\d{6}[HM][A-Z]{5}[A-Z\d]\d)/;
-    
-    // Regex for Electronic ID: Looks for the label (with variations) and captures the following number sequence.
-    // \s* handles any spaces or newlines between the label and the number.
-    const idRegex = /Identificador Electr[oó]nico\s*([0-9]+)/i;
-
-    // Regex for Issuing Entity: Looks for the label, skips any junk text in between, and captures the state name in caps.
-    const entidadRegex = /Entidad de Registro\s*(?:Acta de Nacimiento)?\s*([A-ZÁÉÍÓÚÑ\s]+?)(?=\s{2,}|\n|DATOS)/i;
-
-    const curpMatch = text.match(curpRegex);
-    const idMatch = text.match(idRegex);
-    let entidadMatch = text.match(entidadRegex);
-
-    // Fallback for entity if the main regex fails
-    if (!entidadMatch) {
-       const entidadFallbackRegex = /DATOS DE LA ENTIDAD FEDERATIVA\s*([A-Z\s]+?)\s*(?:DATOS DEL ACTA|Fecha de registro)/i;
-       entidadMatch = text.match(entidadFallbackRegex);
-    }
-    
-    return {
-        curp: curpMatch ? curpMatch[1] : null,
-        electronicId: idMatch ? idMatch[1] : null,
-        issuingEntity: entidadMatch ? entidadMatch[1].trim().replace(/(\r\n|\n|\r)/gm,"") : null
-    };
-}
-
 
 export default function DevelopOcrClient() {
   const [originalFile, setOriginalFile] = useState<File | null>(null);
@@ -91,40 +56,27 @@ export default function DevelopOcrClient() {
     setExtractedData(null);
 
     try {
-      const fileReader = new FileReader();
-      fileReader.onload = async (e) => {
-        if (e.target?.result) {
-            const typedarray = new Uint8Array(e.target.result as ArrayBuffer);
-            const pdf = await pdfjsLib.getDocument(typedarray).promise;
-            let fullText = '';
-            
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const textContent = await page.getTextContent();
-                // Join for regex matching - use newline to better simulate document structure
-                fullText += textContent.items.map(item => 'str' in item ? item.str : '').join('\n');
-            }
-            
-            // Log full text to console for debugging, as requested.
-            console.log("--- Full Extracted OCR Text ---");
-            console.log(fullText);
-            console.log("-------------------------------");
-            
-            const data = await extraerDatosEspeciales(fullText);
+        const fileReader = new FileReader();
+        fileReader.onload = async (e) => {
+            if (e.target?.result) {
+                const dataUri = e.target.result as string;
+                const data = await extractDataFromPdf(dataUri, true); // Pass true to enable console logging
+                
+                if (!data.curp && !data.electronicId && !data.issuingEntity) {
+                   throw new Error("No se pudo extraer ninguna información útil. Asegúrate de que el documento sea legible y contenga los datos esperados.");
+                }
 
-            if (!data.curp && !data.electronicId && !data.issuingEntity) {
-               throw new Error("No se pudo extraer ninguna información útil. Asegúrate de que el documento sea legible y contenga los datos esperados.");
+                setExtractedData(data);
+                setStatus('success');
+                toast({ title: '¡Éxito!', description: 'Se han extraído los datos del PDF.' });
+            } else {
+                throw new Error("No se pudo leer el archivo.");
             }
-
-            setExtractedData(data);
-            setStatus('success');
-            toast({ title: '¡Éxito!', description: 'Se han extraído los datos del PDF.' });
-        }
-      };
+        };
         fileReader.onerror = () => {
             throw new Error("No se pudo leer el archivo.");
         };
-        fileReader.readAsArrayBuffer(originalFile);
+        fileReader.readAsDataURL(originalFile);
 
     } catch (e: any) {
       const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
