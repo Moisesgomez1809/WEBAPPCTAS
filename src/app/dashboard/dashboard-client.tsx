@@ -24,9 +24,9 @@ type OcrStatus = 'idle' | 'processing' | 'success' | 'error';
 type OperationMode = 'manual' | 'ocr';
 
 interface OcrData {
-  curp: string | null;
-  electronicId: string | null;
-  issuingEntity: string | null;
+  curp: string;
+  electronicId: string;
+  issuingEntity: string;
 }
 
 
@@ -59,6 +59,7 @@ function normalizeString(str: string): string {
 }
 
 function findReverseSide(entity: string, db: ReverseSideEntry[]): ReverseSideEntry | null {
+    if (!entity) return null;
     const normalizedEntity = normalizeString(entity);
 
     // Handle special cases from old prompt
@@ -101,7 +102,7 @@ export default function DashboardClient() {
   const [birthStateResult, setBirthStateResult] = useState<string | null>(null);
   const [mode, setMode] = useState<OperationMode>('manual');
   const [ocrStatus, setOcrStatus] = useState<OcrStatus>('idle');
-  const [ocrData, setOcrData] = useState<OcrData | null>(null);
+  const [ocrData, setOcrData] = useState<OcrData>({ curp: '', electronicId: '', issuingEntity: ''});
 
   const { toast } = useToast();
   const router = useRouter();
@@ -141,7 +142,7 @@ export default function DashboardClient() {
     setExtractedCurp(null);
     setAddFolio(false);
     setOcrStatus('idle');
-    setOcrData(null);
+    setOcrData({ curp: '', electronicId: '', issuingEntity: ''});
   }, [previewUrl]);
 
   const handleFileChange = (file: File | null) => {
@@ -174,16 +175,20 @@ export default function DashboardClient() {
 
    const handleOcrProcess = async (dataUri: string) => {
     setOcrStatus('processing');
-    setOcrData(null);
+    setOcrData({ curp: '', electronicId: '', issuingEntity: ''});
     try {
       const data = await extractDataFromPdf(dataUri);
-      setOcrData(data);
+      setOcrData({
+        curp: data.curp || '',
+        electronicId: data.electronicId || '',
+        issuingEntity: data.issuingEntity || ''
+      });
       setOcrStatus('success');
 
       if (!data.curp && !data.electronicId && !data.issuingEntity) {
-        toast({ title: "OCR Sin Resultados", description: "No se encontró información clave.", variant: "destructive" });
+        toast({ title: "OCR Sin Resultados", description: "No se encontró información clave. Puedes llenarla manualmente.", variant: "destructive" });
       } else {
-        toast({ title: "OCR Completado", description: "Verifica los datos extraídos." });
+        toast({ title: "OCR Completado", description: "Verifica y corrige los datos si es necesario." });
       }
       
     } catch (e: any) {
@@ -191,6 +196,10 @@ export default function DashboardClient() {
         setError(e.message || "Falló el proceso de OCR.");
         toast({ title: 'Error de OCR', description: e.message, variant: 'destructive' });
     }
+  };
+
+  const handleOcrDataChange = (field: keyof OcrData, value: string) => {
+    setOcrData(prev => ({ ...prev, [field]: value }));
   };
 
   
@@ -300,7 +309,7 @@ export default function DashboardClient() {
       }
       
       if (!curp || !electronicId) {
-          throw new Error("No se pudo extraer la CURP o el Identificador Electrónico. Asegúrate de que el documento sea claro.");
+          throw new Error("No se pudo extraer la CURP o el Identificador Electrónico. Asegúrate de que el documento sea claro y los datos correctos.");
       }
       
       setExtractedCurp(curp);
@@ -398,7 +407,7 @@ export default function DashboardClient() {
         <Card>
             <CardHeader>
                 <CardTitle>Resultados del OCR</CardTitle>
-                <CardDescription>Datos extraídos del documento. Verifícalos antes de fusionar.</CardDescription>
+                <CardDescription>Verifica y corrige los datos extraídos antes de fusionar.</CardDescription>
             </CardHeader>
             <CardContent>
                 {ocrStatus === 'processing' && (
@@ -407,19 +416,19 @@ export default function DashboardClient() {
                         <p className="text-muted-foreground">Escaneando documento...</p>
                     </div>
                 )}
-                {ocrStatus === 'success' && ocrData && (
-                    <div className="space-y-3 font-mono text-sm">
+                {ocrStatus === 'success' && (
+                     <div className="space-y-4">
                         <div>
-                          <p className="font-semibold text-muted-foreground">CURP:</p>
-                          <p className="text-primary font-bold">{ocrData.curp || <span className="text-destructive">No encontrado</span>}</p>
+                            <Label htmlFor="ocr-curp">CURP</Label>
+                            <Input id="ocr-curp" value={ocrData.curp} onChange={(e) => handleOcrDataChange('curp', e.target.value)} placeholder="CURP no encontrada" />
+                        </div>
+                         <div>
+                            <Label htmlFor="ocr-id">ID Electrónico</Label>
+                            <Input id="ocr-id" value={ocrData.electronicId} onChange={(e) => handleOcrDataChange('electronicId', e.target.value)} placeholder="ID no encontrado" />
                         </div>
                         <div>
-                          <p className="font-semibold text-muted-foreground">ID Electrónico:</p>
-                          <p>{ocrData.electronicId || <span className="text-destructive">No encontrado</span>}</p>
-                        </div>
-                        <div>
-                          <p className="font-semibold text-muted-foreground">Entidad de Registro:</p>
-                          <p>{ocrData.issuingEntity || <span className="text-destructive">No encontrada</span>}</p>
+                            <Label htmlFor="ocr-entity">Entidad de Registro</Label>
+                             <Input id="ocr-entity" value={ocrData.issuingEntity} onChange={(e) => handleOcrDataChange('issuingEntity', e.target.value)} placeholder="Entidad no encontrada" />
                         </div>
                     </div>
                 )}
@@ -427,7 +436,7 @@ export default function DashboardClient() {
             </CardContent>
             {ocrStatus === 'success' && (
                 <CardFooter>
-                     <Button onClick={() => processFusion(ocrData?.issuingEntity ?? null, ocrData)} disabled={!ocrData?.issuingEntity || !ocrData.curp || !ocrData.electronicId || status === 'loading'} className="w-full">
+                     <Button onClick={() => processFusion(ocrData.issuingEntity, ocrData)} disabled={!ocrData.issuingEntity || !ocrData.curp || !ocrData.electronicId || status === 'loading'} className="w-full">
                         {status === 'loading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                          Validar y Fusionar
                     </Button>
@@ -620,5 +629,7 @@ export default function DashboardClient() {
     </main>
   );
 }
+
+    
 
     

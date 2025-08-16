@@ -89,3 +89,5 @@ export async function extractDataFromPdf(pdfDataUri: string, logFullText = false
         throw new Error("No se pudo procesar el PDF. El archivo puede estar dañado o en un formato no compatible.");
     }
 }
+
+    
