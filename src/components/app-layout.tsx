@@ -39,6 +39,7 @@ const navItems = [
   { href: "/bulk-fusion", icon: Files, label: "Fusión Masiva" },
   { href: "/frame", icon: Frame, label: "Enmarcar Acta" },
   { href: "/metadata", icon: FileCog, label: "Modificar Metadata" },
+  { href: "/develop-ocr", icon: ScanText, label: "OCR Nativo" },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
