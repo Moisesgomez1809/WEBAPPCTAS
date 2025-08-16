@@ -3,7 +3,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FileUp, Loader2, AlertCircle, RefreshCcw, ScanText, FileCheck2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
