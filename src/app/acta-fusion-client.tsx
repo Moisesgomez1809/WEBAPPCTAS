@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Files, ShoppingCart, Lock, Unlock, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Files, ShoppingCart, Lock, Unlock, TrendingUp, CalendarDays } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -28,14 +28,33 @@ import {
 } from "recharts";
 import type { ChartConfig } from "@/components/ui/chart";
 import { ChartContainer } from '@/components/ui/chart';
+import { cn } from '@/lib/utils';
 
 
 interface Stats {
   total: number;
 }
 
+interface DailyStats {
+  weekNumber: number;
+  counts: number[]; // Index 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+}
+
+// Helper to get the ISO week number
+const getWeekNumber = (d: Date): number => {
+  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d.valueOf() - yearStart.valueOf()) / 86400000) + 1) / 7);
+  return weekNo;
+};
+
+const dayNames = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const orderedDayIndexes = [1, 2, 3, 4, 5, 6, 0]; // Lunes a Domingo
+
 export default function ActaFusionClient() {
   const [stats, setStats] = useState<Stats>({ total: 0 });
+  const [dailyStats, setDailyStats] = useState<number[]>(Array(7).fill(0));
   const [weeklyGoal, setWeeklyGoal] = useState<number | null>(null);
   const [isGoalLocked, setIsGoalLocked] = useState(false);
 
@@ -44,14 +63,31 @@ export default function ActaFusionClient() {
 
   useEffect(() => {
     // This effect should only run on the client side
-    const fusions = parseInt(localStorage.getItem('fusionCount') || '0', 10);
-    const folios = parseInt(localStorage.getItem('folioCount') || '0', 10);
-    const frames = parseInt(localStorage.getItem('frameCount') || '0', 10);
-    const metadata = parseInt(localStorage.getItem('metadataCount') || '0', 10);
-    
-    setStats({
-      total: fusions + folios + frames + metadata,
-    });
+    const totalFusions = parseInt(localStorage.getItem('fusionCount') || '0', 10);
+    setStats({ total: totalFusions });
+
+    // Load daily stats
+    const today = new Date();
+    const currentWeek = getWeekNumber(today);
+    const storedStatsRaw = localStorage.getItem('dailyFusionStats');
+    let loadedStats: DailyStats = { weekNumber: currentWeek, counts: Array(7).fill(0) };
+
+    if (storedStatsRaw) {
+      try {
+        const parsed = JSON.parse(storedStatsRaw);
+        if (parsed.weekNumber === currentWeek) {
+          loadedStats = parsed;
+        } else {
+           localStorage.setItem('dailyFusionStats', JSON.stringify(loadedStats)); // Reset for new week
+        }
+      } catch (e) {
+        console.error("Could not parse daily stats from localStorage", e);
+      }
+    } else {
+        localStorage.setItem('dailyFusionStats', JSON.stringify(loadedStats));
+    }
+    setDailyStats(loadedStats.counts);
+
 
     // Load weekly goal state
     const savedGoal = localStorage.getItem('weeklyGoal');
@@ -60,17 +96,16 @@ export default function ActaFusionClient() {
     if (savedGoal) setWeeklyGoal(parseInt(savedGoal, 10));
     if (savedIsLocked) setIsGoalLocked(JSON.parse(savedIsLocked));
   }, []);
-
+  
   const handleResetStats = () => {
     try {
         localStorage.setItem('fusionCount', '0');
-        localStorage.setItem('folioCount', '0');
-        localStorage.setItem('frameCount', '0');
-        localStorage.setItem('metadataCount', '0');
+        localStorage.removeItem('dailyFusionStats');
         localStorage.removeItem('weeklyGoal');
         localStorage.removeItem('isGoalLocked');
 
         setStats({ total: 0 });
+        setDailyStats(Array(7).fill(0));
         setWeeklyGoal(null);
         setIsGoalLocked(false);
         
@@ -93,7 +128,7 @@ export default function ActaFusionClient() {
   const maxTrámites = 1000;
   const progressPercentage = totalTrámites > 0 ? (totalTrámites / maxTrámites) * 100 : 0;
 
-  const weeklyTransactions = stats.total;
+  const weeklyTransactions = dailyStats.reduce((sum, count) => sum + count, 0);
   const remainingForGoal = weeklyGoal ? Math.max(0, weeklyGoal - weeklyTransactions) : 0;
   
   const chartData = weeklyGoal ? [
@@ -121,7 +156,8 @@ export default function ActaFusionClient() {
       }
     }
   };
-
+  
+  const todayIndex = new Date().getDay();
 
   return (
     <main className="container mx-auto p-4 sm:p-6 lg:p-8 flex flex-col items-center">
@@ -133,22 +169,38 @@ export default function ActaFusionClient() {
         </header>
 
         <div className="w-full max-w-5xl space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 col-span-full">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Trámites Totales</CardTitle>
-                        <BarChart3 className="h-5 w-5 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{totalTrámites}</div>
-                        <p className="text-xs text-muted-foreground">
-                            de {maxTrámites} trámites totales.
-                        </p>
-                        <Progress value={progressPercentage} className="mt-4 h-2" />
-                         <p className="text-xs text-muted-foreground pt-1 text-right">{progressPercentage.toFixed(1)}%</p>
-                    </CardContent>
-                </Card>
-            </div>
+            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 col-span-full">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Trámites Totales Históricos</CardTitle>
+                    <BarChart3 className="h-5 w-5 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{totalTrámites}</div>
+                    <p className="text-xs text-muted-foreground">
+                        de {maxTrámites} trámites totales.
+                    </p>
+                    <Progress value={progressPercentage} className="mt-4 h-2" />
+                     <p className="text-xs text-muted-foreground pt-1 text-right">{progressPercentage.toFixed(1)}%</p>
+                </CardContent>
+            </Card>
+
+            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+                <CardHeader>
+                    <div className="flex items-center space-x-2">
+                        <CalendarDays className="h-6 w-6 text-primary"/>
+                        <CardTitle>Trámites de la Semana</CardTitle>
+                    </div>
+                    <CardDescription>Resumen de los trámites realizados durante la semana actual.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                    {orderedDayIndexes.map(dayIndex => (
+                        <Card key={dayIndex} className={cn("flex flex-col items-center justify-center p-4 text-center", dayIndex === todayIndex && "bg-primary/10 border-primary")}>
+                           <p className={cn("font-semibold text-sm", dayIndex === todayIndex && "text-primary")}>{dayNames[dayIndex]}</p>
+                           <p className="text-3xl font-bold mt-2">{dailyStats[dayIndex]}</p>
+                        </Card>
+                    ))}
+                </CardContent>
+            </Card>
             
              <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 col-span-full">
                 <CardHeader>
@@ -171,7 +223,7 @@ export default function ActaFusionClient() {
                             </Button>
                         </div>
                     </div>
-                     <CardDescription>Establece un objetivo semanal y monitorea tu progreso.</CardDescription>
+                     <CardDescription>Establece un objetivo semanal y monitorea tu progreso. Se basa en los trámites de la semana actual.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center justify-center pt-6">
                    {isGoalLocked && weeklyGoal ? (
@@ -275,7 +327,7 @@ export default function ActaFusionClient() {
                             <AlertDialogHeader>
                             <AlertDialogTitle>¿Estás absolutely seguro?</AlertDialogTitle>
                             <AlertDialogDescription>
-                                Esta acción no se puede deshacer. Esto pondrá a cero todos los contadores de trámites, las ganancias y los costos.
+                                Esta acción no se puede deshacer. Esto pondrá a cero todos los contadores de trámites, tanto el histórico como los diarios.
                             </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -290,3 +342,5 @@ export default function ActaFusionClient() {
     </main>
   );
 }
+
+    

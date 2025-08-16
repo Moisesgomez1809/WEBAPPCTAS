@@ -12,6 +12,15 @@ import { modifyMetadataAndResizeClient } from '@/lib/pdf-utils';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
+// Helper to get the ISO week number
+const getWeekNumber = (d: Date): number => {
+  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d.valueOf() - yearStart.valueOf()) / 86400000) + 1) / 7);
+  return weekNo;
+};
+
 export default function MetadataClient() {
   const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [pdfDataUri, setPdfDataUri] = useState<string | null>(null); // data-uri for processing
@@ -81,8 +90,27 @@ export default function MetadataClient() {
     if (!modifiedPdfUrl) return;
 
     try {
-      const currentCount = parseInt(localStorage.getItem('metadataCount') || '0', 10);
-      localStorage.setItem('metadataCount', (currentCount + 1).toString());
+      const currentFusionCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
+      localStorage.setItem('fusionCount', (currentFusionCount + 1).toString());
+
+      const today = new Date();
+      const currentWeek = getWeekNumber(today);
+      const dayIndex = today.getDay();
+
+      const storedStatsRaw = localStorage.getItem('dailyFusionStats');
+      let dailyStats = { weekNumber: currentWeek, counts: Array(7).fill(0) };
+
+      if (storedStatsRaw) {
+          try {
+              const parsed = JSON.parse(storedStatsRaw);
+              if (parsed.weekNumber === currentWeek) {
+                  dailyStats = parsed;
+              }
+          } catch (e) { console.error(e); }
+      }
+
+      dailyStats.counts[dayIndex]++;
+      localStorage.setItem('dailyFusionStats', JSON.stringify(dailyStats));
 
       const link = document.createElement('a');
       link.href = modifiedPdfUrl;
@@ -247,3 +275,5 @@ export default function MetadataClient() {
     </main>
   );
 }
+
+    

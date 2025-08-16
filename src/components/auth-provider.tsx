@@ -60,11 +60,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         // Also clear any local data
         localStorage.removeItem('reverse-sides-db');
         localStorage.removeItem('fusionCount');
-        localStorage.removeItem('folioCount');
-        localStorage.removeItem('frameCount');
-        localStorage.removeItem('metadataCount');
-        localStorage.removeItem('totalProfit');
-        localStorage.removeItem('totalProviderCost');
+        localStorage.removeItem('dailyFusionStats');
         localStorage.removeItem('weeklyGoal');
         localStorage.removeItem('isGoalLocked');
     } catch (error) {
@@ -86,3 +82,5 @@ export function useAuth() {
   }
   return context;
 }
+
+    
