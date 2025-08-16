@@ -103,6 +103,11 @@ export default function ActaFusionClient() {
         localStorage.setItem('dailyFusionStats', JSON.stringify(loadedStats));
     }
     setDailyStats(loadedStats.counts);
+    
+    // The historical total should be the sum of the weekly stats
+    const weeklyTotal = loadedStats.counts.reduce((sum, count) => sum + count, 0);
+    setStats({ total: weeklyTotal });
+    localStorage.setItem('fusionCount', weeklyTotal.toString()); // Keep historical in sync
 
 
     // Load weekly goal state
@@ -144,10 +149,10 @@ export default function ActaFusionClient() {
   };
 
   const handleManualAdjustment = () => {
-    if (adjustmentDay === "" || adjustmentAmount <= 0) {
+    if (adjustmentDay === "" || adjustmentAmount === 0) {
       toast({
         title: "Datos Inválidos",
-        description: "Por favor, selecciona un día y una cantidad mayor que cero.",
+        description: "Por favor, selecciona un día y una cantidad (positiva o negativa) distinta de cero.",
         variant: "destructive",
       });
       return;
@@ -159,19 +164,26 @@ export default function ActaFusionClient() {
       const storedStatsRaw = localStorage.getItem('dailyFusionStats');
       if (storedStatsRaw) {
         const parsedStats = JSON.parse(storedStatsRaw);
-        // Ensure we don't add to a past week's stats
         const today = new Date();
         const currentWeek = getWeekNumber(today);
         if (parsedStats.weekNumber === currentWeek) {
-            parsedStats.counts[dayIndex] += adjustmentAmount;
+            // Adjust daily stats
+            const newDailyCount = Math.max(0, (parsedStats.counts[dayIndex] || 0) + adjustmentAmount);
+            const actualAmountChanged = newDailyCount - (parsedStats.counts[dayIndex] || 0);
+            parsedStats.counts[dayIndex] = newDailyCount;
             localStorage.setItem('dailyFusionStats', JSON.stringify(parsedStats));
+
+            // Adjust historical total as well
+            const currentTotal = parseInt(localStorage.getItem('fusionCount') || '0', 10);
+            const newTotal = Math.max(0, currentTotal + actualAmountChanged);
+            localStorage.setItem('fusionCount', newTotal.toString());
             
             // Reload data to reflect changes
             loadDataFromLocalStorage();
 
             toast({
                 title: "Ajuste Exitoso",
-                description: `Se agregaron ${adjustmentAmount} trámites al ${dayNames[dayIndex]}.`
+                description: `Se ${actualAmountChanged >= 0 ? 'agregaron' : 'restaron'} ${Math.abs(actualAmountChanged)} trámites al ${dayNames[dayIndex]}.`
             });
 
             // Reset form and close dialog
@@ -244,7 +256,7 @@ export default function ActaFusionClient() {
         <div className="w-full max-w-5xl space-y-8">
             <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 col-span-full">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Trámites Totales Históricos</CardTitle>
+                    <CardTitle className="text-sm font-medium">Trámites Totales de la Semana</CardTitle>
                     <BarChart3 className="h-5 w-5 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -275,7 +287,7 @@ export default function ActaFusionClient() {
                           <DialogHeader>
                             <DialogTitle>Ajuste Manual de Trámites</DialogTitle>
                             <DialogDescription>
-                              Agrega trámites a un día específico de la semana actual. Esta acción es aditiva.
+                              Agrega o resta trámites a un día específico de la semana actual.
                             </DialogDescription>
                           </DialogHeader>
                           <div className="grid gap-4 py-4">
@@ -297,6 +309,7 @@ export default function ActaFusionClient() {
                               <Input
                                 id="amount"
                                 type="number"
+                                placeholder="+10, -5, etc."
                                 className="col-span-3"
                                 value={adjustmentAmount || ''}
                                 onChange={e => setAdjustmentAmount(parseInt(e.target.value, 10) || 0)}
@@ -464,5 +477,7 @@ export default function ActaFusionClient() {
     </main>
   );
 }
+
+    
 
     
