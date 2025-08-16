@@ -548,8 +548,6 @@ export default function DashboardClient() {
 
             {originalFile ? (status === 'idle' ? (mode === 'ocr' ? renderOcrResults() : renderManualMode()) : renderProcessingState()) : renderDropzone()}
 
-            {mode === 'manual' && originalFile && status === 'idle' && renderManualMode()}
-
             {error && (
             <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -629,7 +627,3 @@ export default function DashboardClient() {
     </main>
   );
 }
-
-    
-
-    
