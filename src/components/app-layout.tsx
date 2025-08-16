@@ -16,7 +16,7 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from "@/components/ui/sidebar";
-import { BarChart3, Combine, FileCog, Files, Frame, Settings } from "lucide-react";
+import { BarChart3, Combine, FileCog, Files, Frame, ScanText } from "lucide-react";
 import { useAuth } from "./auth-provider";
 import { Button } from "./ui/button";
 
@@ -26,6 +26,7 @@ const navItems = [
   { href: "/bulk-fusion", icon: Files, label: "Fusión Masiva" },
   { href: "/frame", icon: Frame, label: "Enmarcar Acta" },
   { href: "/metadata", icon: FileCog, label: "Modificar Metadata" },
+  { href: "/develop-ocr", icon: ScanText, label: "Develop OCR" },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -71,5 +72,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-
-    
