@@ -9,8 +9,10 @@ import { FileUp, Loader2, AlertCircle, RefreshCcw, ScanText, FileCheck2 } from '
 import { useToast } from "@/hooks/use-toast";
 import * as pdfjsLib from "pdfjs-dist";
 
-// Configure the worker to use the local file from node_modules
+// Configure the worker to use the local file from node_modules.
+// This is the correct way for Next.js to avoid CDN and CORS issues.
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
 
 interface OcrResult {
   identificador: string | null;
@@ -31,34 +33,22 @@ function extraerDatosEspeciales(texto: string): OcrResult {
   let curp = null;
 
   // Regex for Electronic Identifier
-  // Looks for "Identificador Electronico" followed by a sequence of digits
-  const regexId = /Identificador\s+Electr[oó]nico\s*:\s*(\d{10,30})|Identificador\s+Electr[oó]nico\s*(\d{10,30})/;
+  // Looks for variations of "Identificador Electronico" followed by a sequence of digits.
+  const regexId = /Identificador\s+Electr[oó]nico\s*:?\s*(\d{20,})/;
   let matchId = limpio.match(regexId);
   if (matchId) {
-    identificador = matchId[1] || matchId[2];
-  } else {
-    // Fallback regex if the label is slightly different or missing.
-    // This is more brittle and might need adjustment based on real examples.
-    const fallbackRegexId = /(\d{2}\s\d{2}\s\d{4})\s\d{5}/;
-    const fallbackMatch = limpio.match(fallbackRegexId);
-    if(fallbackMatch) {
-       const potentialIdSection = limpio.substring(fallbackMatch.index! + fallbackMatch[0].length).trim();
-       const finalIdMatch = potentialIdSection.match(/^\d+/);
-       if(finalIdMatch){
-           identificador = finalIdMatch[0]
-       }
-    }
+    identificador = matchId[1];
   }
 
   // Regex for CURP
-  // Standard 18-character CURP format.
-  const regexCurp = /([A-Z][AEIOUX][A-Z]{2}\d{6}[HM][A-Z]{5}[A-Z0-9]\d)/;
+  // Standard 18-character CURP format, looks for a string that is exactly this format.
+  const regexCurp = /\b([A-Z][AEIOUX][A-Z]{2}\d{6}[HM][A-Z]{5}[A-Z0-9]\d)\b/;
   let matchCurp = limpio.match(regexCurp);
   if (matchCurp) curp = matchCurp[0];
 
   // Regex for Issuing Entity (Entidad de Registro)
   // Looks for "Entidad de Registro" followed by capitalized words.
-  const regexEntidad = /Entidad de Registro\s+([A-ZÁÉÍÓÚÜÑ\s]+?)(?=\s[A-Z]{2,}|$)/;
+  const regexEntidad = /Entidad\s+de\s+Registro\s+([A-ZÁÉÍÓÚÜÑ\s]+?)(?=\s[A-Z]{2,}|$)/;
   let matchEntidad = limpio.match(regexEntidad);
   if (matchEntidad) {
     entidad = matchEntidad[1].trim();
@@ -66,6 +56,7 @@ function extraerDatosEspeciales(texto: string): OcrResult {
 
   return { identificador, entidad, curp };
 }
+
 
 export default function DevelopOcrClient() {
   const [originalFile, setOriginalFile] = useState<File | null>(null);
@@ -235,3 +226,5 @@ export default function DevelopOcrClient() {
     </main>
   );
 }
+
+    
