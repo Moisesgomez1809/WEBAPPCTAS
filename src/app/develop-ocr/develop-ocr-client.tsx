@@ -59,7 +59,6 @@ export default function DevelopOcrClient() {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
-  const [fullExtractedText, setFullExtractedText] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
   
@@ -68,7 +67,6 @@ export default function DevelopOcrClient() {
     setOriginalFile(null);
     setPreviewUrl(null);
     setExtractedData(null);
-    setFullExtractedText(null);
     setStatus('idle');
     setError(null);
   }, [previewUrl]);
@@ -91,7 +89,6 @@ export default function DevelopOcrClient() {
     setStatus('loading');
     setError(null);
     setExtractedData(null);
-    setFullExtractedText(null);
 
     try {
       const fileReader = new FileReader();
@@ -100,33 +97,19 @@ export default function DevelopOcrClient() {
             const typedarray = new Uint8Array(e.target.result as ArrayBuffer);
             const pdf = await pdfjsLib.getDocument(typedarray).promise;
             let fullText = '';
-            let rawTextItems: any[] = [];
-
+            
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
-                // Store raw items to preserve structure
-                rawTextItems = rawTextItems.concat(textContent.items);
                 // Join for regex matching - use newline to better simulate document structure
                 fullText += textContent.items.map(item => 'str' in item ? item.str : '').join('\n');
             }
             
-            // Reconstruct text preserving some structure for display
-            let displayText = '';
-            let lastY = -1;
-            rawTextItems.sort((a,b) => b.transform[5] - a.transform[5] || a.transform[4] - b.transform[4]);
-            for(const item of rawTextItems) {
-                if ('str' in item) {
-                    if(lastY !== -1 && Math.abs(item.transform[5] - lastY) > 5) {
-                        displayText += '\n';
-                    }
-                    displayText += item.str;
-                    lastY = item.transform[5];
-                }
-            }
-
-
-            setFullExtractedText(displayText);
+            // Log full text to console for debugging, as requested.
+            console.log("--- Full Extracted OCR Text ---");
+            console.log(fullText);
+            console.log("-------------------------------");
+            
             const data = await extraerDatosEspeciales(fullText);
 
             if (!data.curp && !data.electronicId && !data.issuingEntity) {
@@ -229,20 +212,6 @@ export default function DevelopOcrClient() {
             </Button>
           </CardFooter>
         </Card>
-        
-        {fullExtractedText && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Texto Completo Extraído</CardTitle>
-              <CardDescription>Usa este texto para identificar los patrones faltantes. Se han conservado los saltos de línea para mayor claridad.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-72 w-full rounded-md border p-4 bg-secondary">
-                 <pre className="text-xs whitespace-pre-wrap font-mono">{fullExtractedText}</pre>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        )}
     </div>
   );
 
