@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
@@ -268,7 +269,7 @@ export default function DashboardClient() {
   }, [addFolio]);
 
 
-  const processFusion = async (entityToUse: string | null) => {
+  const processFusion = async (entityToUse: string | null, localOcrData: OcrData | null = null) => {
     if (!originalPdfUrl || !entityToUse) {
        toast({
         title: "Selección Requerida",
@@ -279,22 +280,33 @@ export default function DashboardClient() {
     }
 
     setStatus('loading');
-    setLoadingStep('extractingDetails');
     setError(null);
     setEntity(null);
     setExtractedCurp(null);
-
+    
     try {
-      const { curp, electronicId } = await extractDocumentDetails({ pdfDataUri: originalPdfUrl });
+      let curp: string | null = null;
+      let electronicId: string | null = null;
+
+      if (mode === 'ocr' && localOcrData) {
+        setLoadingStep('matching'); // Skip extraction step visually
+        curp = localOcrData.curp;
+        electronicId = localOcrData.electronicId;
+      } else {
+        setLoadingStep('extractingDetails');
+        const details = await extractDocumentDetails({ pdfDataUri: originalPdfUrl });
+        curp = details.curp;
+        electronicId = details.electronicId;
+      }
       
       if (!curp || !electronicId) {
-          throw new Error("No se pudo extraer la CURP o el Identificador Electrónico con la IA. Asegúrate de que el documento sea claro.");
+          throw new Error("No se pudo extraer la CURP o el Identificador Electrónico. Asegúrate de que el documento sea claro.");
       }
       
       setExtractedCurp(curp);
       setEntity(entityToUse);
       
-      setLoadingStep('matching');
+      if(loadingStep !== 'matching') setLoadingStep('matching');
       
       const reverseSideEntry = findReverseSide(entityToUse, db);
       if (!reverseSideEntry) {
@@ -415,7 +427,7 @@ export default function DashboardClient() {
             </CardContent>
             {ocrStatus === 'success' && (
                 <CardFooter>
-                     <Button onClick={() => processFusion(ocrData?.issuingEntity ?? null)} disabled={!ocrData?.issuingEntity || status === 'loading'} className="w-full">
+                     <Button onClick={() => processFusion(ocrData?.issuingEntity ?? null, ocrData)} disabled={!ocrData?.issuingEntity || !ocrData.curp || !ocrData.electronicId || status === 'loading'} className="w-full">
                         {status === 'loading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                          Validar y Fusionar
                     </Button>
@@ -525,7 +537,7 @@ export default function DashboardClient() {
                 </CardContent>
             </Card>
 
-            {originalFile ? (status === 'idle' ? renderOcrResults() : renderProcessingState()) : renderDropzone()}
+            {originalFile ? (status === 'idle' ? (mode === 'ocr' ? renderOcrResults() : renderManualMode()) : renderProcessingState()) : renderDropzone()}
 
             {mode === 'manual' && originalFile && status === 'idle' && renderManualMode()}
 
@@ -608,3 +620,5 @@ export default function DashboardClient() {
     </main>
   );
 }
+
+    
