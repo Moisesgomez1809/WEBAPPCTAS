@@ -9,7 +9,7 @@ import { FileUp, Loader2, AlertCircle, RefreshCcw, ScanText, FileCheck2 } from '
 import { useToast } from "@/hooks/use-toast";
 import * as pdfjsLib from "pdfjs-dist";
 
-// Configure the worker
+// Configure the worker to use the local file from node_modules
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 interface OcrResult {
@@ -212,7 +212,7 @@ export default function DevelopOcrClient() {
                 <CardDescription>
                   {previewUrl ? 'Vista previa de tu documento cargado.' : 'Sube un archivo para ver la vista previa.'}
                 </CardDescription>
-            </CardHeader>
+            </Header>
             <CardContent className="flex-grow">
               <div className="w-full h-full bg-secondary rounded-lg flex items-center justify-center">
                 {previewUrl ? (
