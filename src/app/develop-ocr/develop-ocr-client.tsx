@@ -8,6 +8,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FileUp, Loader2, AlertCircle, RefreshCcw, ScanText, FileCheck2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import * as pdfjsLib from "pdfjs-dist";
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 
 // Configure the worker to use the local file from node_modules.
 // This is the correct way for Next.js to avoid CDN and CORS issues.
@@ -51,6 +53,7 @@ export default function DevelopOcrClient() {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
+  const [fullExtractedText, setFullExtractedText] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
   
@@ -59,6 +62,7 @@ export default function DevelopOcrClient() {
     setOriginalFile(null);
     setPreviewUrl(null);
     setExtractedData(null);
+    setFullExtractedText(null);
     setStatus('idle');
     setError(null);
   }, [previewUrl]);
@@ -81,6 +85,7 @@ export default function DevelopOcrClient() {
     setStatus('loading');
     setError(null);
     setExtractedData(null);
+    setFullExtractedText(null);
 
     try {
       const fileReader = new FileReader();
@@ -96,6 +101,7 @@ export default function DevelopOcrClient() {
                 fullText += textContent.items.map(item => 'str' in item ? item.str : '').join(' ');
             }
             
+            setFullExtractedText(fullText);
             const data = await extraerDatosEspeciales(fullText);
 
             if (!data.curp && !data.electronicId && !data.issuingEntity) {
@@ -172,31 +178,47 @@ export default function DevelopOcrClient() {
   );
 
   const renderResults = () => (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Resultados del OCR</CardTitle>
-        <CardDescription>Datos extraídos del documento: {originalFile?.name}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3 font-mono text-sm">
-        <div>
-          <p className="font-semibold text-muted-foreground">CURP:</p>
-          <p className="text-primary font-bold">{extractedData?.curp || 'No encontrado'}</p>
-        </div>
-        <div>
-          <p className="font-semibold text-muted-foreground">Identificador Electrónico:</p>
-          <p>{extractedData?.electronicId || 'No encontrado'}</p>
-        </div>
-        <div>
-          <p className="font-semibold text-muted-foreground">Entidad de Registro:</p>
-          <p>{extractedData?.issuingEntity || 'No encontrada'}</p>
-        </div>
-      </CardContent>
-       <CardFooter>
-        <Button onClick={handleReset} variant="outline" className="w-full">
-          <RefreshCcw className="mr-2 h-4 w-4" /> Procesar otro documento
-        </Button>
-      </CardFooter>
-    </Card>
+    <div className="space-y-4">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Resultados del OCR</CardTitle>
+            <CardDescription>Datos extraídos del documento: {originalFile?.name}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 font-mono text-sm">
+            <div>
+              <p className="font-semibold text-muted-foreground">CURP:</p>
+              <p className="text-primary font-bold">{extractedData?.curp || 'No encontrado'}</p>
+            </div>
+            <div>
+              <p className="font-semibold text-muted-foreground">Identificador Electrónico:</p>
+              <p>{extractedData?.electronicId || 'No encontrado'}</p>
+            </div>
+            <div>
+              <p className="font-semibold text-muted-foreground">Entidad de Registro:</p>
+              <p>{extractedData?.issuingEntity || 'No encontrada'}</p>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button onClick={handleReset} variant="outline" className="w-full">
+              <RefreshCcw className="mr-2 h-4 w-4" /> Procesar otro documento
+            </Button>
+          </CardFooter>
+        </Card>
+        
+        {fullExtractedText && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Texto Completo Extraído</CardTitle>
+              <CardDescription>Usa este texto para identificar los patrones faltantes.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-72 w-full rounded-md border p-4">
+                 <pre className="text-xs whitespace-pre-wrap">{fullExtractedText}</pre>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        )}
+    </div>
   );
 
   return (
