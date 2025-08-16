@@ -34,7 +34,7 @@ function extraerDatosEspeciales(texto: string): OcrResult {
 
   // Regex for Electronic Identifier
   // Looks for variations of "Identificador Electronico" followed by a sequence of digits.
-  const regexId = /Identificador\s+Electr[oó]nico\s*:?\s*(\d{20,})/;
+  const regexId = /Identificador\s+Electrónico\s*:?\s*(\d{20,})/;
   let matchId = limpio.match(regexId);
   if (matchId) {
     identificador = matchId[1];
@@ -226,3 +226,5 @@ export default function DevelopOcrClient() {
     </main>
   );
 }
+
+    
