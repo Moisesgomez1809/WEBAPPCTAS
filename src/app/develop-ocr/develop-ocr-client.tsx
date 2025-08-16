@@ -25,9 +25,15 @@ interface ExtractedData {
 }
 
 async function extraerDatosEspeciales(text: string): Promise<ExtractedData> {
+    // Regex for CURP (standard format)
     const curpRegex = /([A-Z][AEIOUX][A-Z]{2}\d{6}[HM][A-Z]{5}[A-Z\d]\d)/;
-    const idRegex = /(?:Identificador Electrónico|Identificador Electronico|Identificador):\s*([A-Z0-9]+)/i;
-    const entidadRegex = /(?:Entidad de Registro|Entidad de Registra|Entidad de Regisiro):\s*([A-Z\s]+)/i;
+    
+    // Regex for Electronic ID: Looks for the label (with variations) and captures the following number sequence.
+    // \s* handles any spaces or newlines between the label and the number.
+    const idRegex = /Identificador Electr[oó]nico\s*([0-9]+)/i;
+
+    // Regex for Issuing Entity: Looks for the label, skips any junk text in between, and captures the state name in caps.
+    const entidadRegex = /Entidad de Registro\s*(?:Acta de Nacimiento)?\s*([A-ZÁÉÍÓÚÑ\s]+?)(?=\s{2,}|\n|DATOS)/i;
 
     const curpMatch = text.match(curpRegex);
     const idMatch = text.match(idRegex);
@@ -42,7 +48,7 @@ async function extraerDatosEspeciales(text: string): Promise<ExtractedData> {
     return {
         curp: curpMatch ? curpMatch[1] : null,
         electronicId: idMatch ? idMatch[1] : null,
-        issuingEntity: entidadMatch ? entidadMatch[1].trim() : null
+        issuingEntity: entidadMatch ? entidadMatch[1].trim().replace(/(\r\n|\n|\r)/gm,"") : null
     };
 }
 
@@ -101,8 +107,8 @@ export default function DevelopOcrClient() {
                 const textContent = await page.getTextContent();
                 // Store raw items to preserve structure
                 rawTextItems = rawTextItems.concat(textContent.items);
-                // Join for regex matching
-                fullText += textContent.items.map(item => 'str' in item ? item.str : '').join(' ');
+                // Join for regex matching - use newline to better simulate document structure
+                fullText += textContent.items.map(item => 'str' in item ? item.str : '').join('\n');
             }
             
             // Reconstruct text preserving some structure for display
