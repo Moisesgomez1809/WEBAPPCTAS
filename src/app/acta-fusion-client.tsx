@@ -39,9 +39,16 @@ import {
   RadialBarChart,
   RadialBar,
   PolarAngleAxis,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
 } from "recharts";
 import type { ChartConfig } from "@/components/ui/chart";
-import { ChartContainer } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { cn } from '@/lib/utils';
 
 
@@ -200,13 +207,26 @@ export default function ActaFusionClient() {
   const weeklyTransactions = dailyStats.reduce((sum, count) => sum + count, 0);
   const remainingForGoal = weeklyGoal ? Math.max(0, weeklyGoal - weeklyTransactions) : 0;
   
-  const chartData = weeklyGoal ? [
+  const radialChartData = weeklyGoal ? [
     { name: "trámites", value: weeklyTransactions, fill: "hsl(var(--primary))" },
   ] : [];
   
-  const chartConfig = {
+  const radialChartConfig = {
     trámites: { label: "Trámites", color: "hsl(var(--primary))" },
   } satisfies ChartConfig;
+
+  const barChartData = orderedDayIndexes.map(dayIndex => ({
+    name: dayNames[dayIndex].substring(0, 3), // e.g., "Lun"
+    trámites: dailyStats[dayIndex] || 0,
+  }));
+  
+  const barChartConfig = {
+    trámites: {
+      label: "Trámites",
+      color: "hsl(var(--primary))",
+    },
+  } satisfies ChartConfig;
+
 
   const handleGoalLockToggle = () => {
     if (isGoalLocked) {
@@ -267,8 +287,8 @@ export default function ActaFusionClient() {
             </p>
         </header>
 
-        <div className="w-full max-w-5xl space-y-8">
-            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 col-span-full">
+        <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Trámites Totales de la Semana</CardTitle>
                     <BarChart3 className="h-5 w-5 text-muted-foreground" />
@@ -283,12 +303,96 @@ export default function ActaFusionClient() {
                 </CardContent>
             </Card>
 
-            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+             <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center space-x-2">
+                            <TrendingUp className="h-6 w-6 text-primary"/>
+                            <CardTitle>Meta de la Semana</CardTitle>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                             <Input
+                                type="number"
+                                placeholder="Tu meta"
+                                className="w-24 h-8"
+                                value={weeklyGoal || ''}
+                                onChange={(e) => setWeeklyGoal(Number(e.target.value))}
+                                disabled={isGoalLocked}
+                            />
+                            <Button variant="ghost" size="icon" onClick={handleGoalLockToggle}>
+                                {isGoalLocked ? <Lock className="h-5 w-5 text-primary" /> : <Unlock className="h-5 w-5 text-muted-foreground" />}
+                            </Button>
+                        </div>
+                    </div>
+                     <CardDescription>Establece un objetivo semanal y monitorea tu progreso. Se basa en los trámites de la semana actual.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center justify-center pt-6">
+                   {isGoalLocked && weeklyGoal ? (
+                        <ChartContainer
+                          config={radialChartConfig}
+                          className="mx-auto aspect-square h-[150px] w-[150px]" // Smaller size
+                        >
+                          <RadialBarChart
+                            data={radialChartData}
+                            startAngle={180}
+                            endAngle={0}
+                            innerRadius={60} // Adjusted
+                            outerRadius={80} // Adjusted
+                            barSize={15} // Adjusted
+                          >
+                            <PolarAngleAxis
+                              type="number"
+                              domain={[0, weeklyGoal]}
+                              dataKey="value"
+                              tick={false}
+                            />
+                            <RadialBar
+                              dataKey="value"
+                              background={{ fill: 'hsla(var(--muted))' }}
+                              cornerRadius={10}
+                            />
+                             <text
+                                x="50%"
+                                y="50%"
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                className="fill-foreground text-3xl font-bold"
+                            >
+                                {weeklyTransactions.toLocaleString()}
+                            </text>
+                            <text
+                                x="50%"
+                                y="50%"
+                                dy="2em"
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                className="fill-muted-foreground text-sm"
+                            >
+                                de {weeklyGoal?.toLocaleString()}
+                            </text>
+                          </RadialBarChart>
+                        </ChartContainer>
+                    ) : (
+                        <div className="text-center text-muted-foreground p-8 h-[150px] flex items-center justify-center">
+                            <p>Define una meta y bloquéala para empezar a rastrear.</p>
+                        </div>
+                    )}
+                     {isGoalLocked && weeklyGoal && (
+                        <p className="text-center mt-4 text-xs text-muted-foreground font-medium">
+                            {remainingForGoal > 0
+                            ? `¡Te faltan ${remainingForGoal} para llegar a tu meta!`
+                            : "¡Felicidades, has alcanzado tu meta!"}
+                        </p>
+                    )}
+                </CardContent>
+             </Card>
+
+            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 lg:col-span-2">
                 <CardHeader>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                           <CalendarDays className="h-6 w-6 text-primary"/>
-                          <CardTitle>Trámites de la Semana</CardTitle>
+                          <CardTitle>Contador Diario de Trámites</CardTitle>
                       </div>
                       <div className="flex items-center space-x-1">
                         <Button variant="outline" size="icon" onClick={handleDownloadStats}>
@@ -356,91 +460,34 @@ export default function ActaFusionClient() {
                     ))}
                 </CardContent>
             </Card>
-            
-             <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 col-span-full">
+
+             <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 lg:col-span-2">
                 <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <div className="flex items-center space-x-2">
-                            <TrendingUp className="h-6 w-6 text-primary"/>
-                            <CardTitle>Meta de la Semana</CardTitle>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                             <Input
-                                type="number"
-                                placeholder="Tu meta"
-                                className="w-24 h-8"
-                                value={weeklyGoal || ''}
-                                onChange={(e) => setWeeklyGoal(Number(e.target.value))}
-                                disabled={isGoalLocked}
-                            />
-                            <Button variant="ghost" size="icon" onClick={handleGoalLockToggle}>
-                                {isGoalLocked ? <Lock className="h-5 w-5 text-primary" /> : <Unlock className="h-5 w-5 text-muted-foreground" />}
-                            </Button>
-                        </div>
-                    </div>
-                     <CardDescription>Establece un objetivo semanal y monitorea tu progreso. Se basa en los trámites de la semana actual.</CardDescription>
+                    <CardTitle>Rendimiento de la Semana</CardTitle>
+                    <CardDescription>Visualización de los trámites por día.</CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col items-center justify-center pt-6">
-                   {isGoalLocked && weeklyGoal ? (
-                        <ChartContainer
-                          config={chartConfig}
-                          className="mx-auto aspect-square h-[250px]"
-                        >
-                          <RadialBarChart
-                            data={chartData}
-                            startAngle={180}
-                            endAngle={0}
-                            innerRadius={80}
-                            outerRadius={130}
-                            barSize={20}
-                          >
-                            <PolarAngleAxis
-                              type="number"
-                              domain={[0, weeklyGoal]}
-                              dataKey="value"
-                              tick={false}
-                            />
-                            <RadialBar
-                              dataKey="value"
-                              background={{ fill: 'hsla(var(--muted))' }}
-                              cornerRadius={10}
-                            />
-                             <text
-                                x="50%"
-                                y="50%"
-                                textAnchor="middle"
-                                dominantBaseline="middle"
-                                className="fill-foreground text-5xl font-bold"
-                            >
-                                {weeklyTransactions.toLocaleString()}
-                            </text>
-                            <text
-                                x="50%"
-                                y="50%"
-                                dy="2.5em"
-                                textAnchor="middle"
-                                dominantBaseline="middle"
-                                className="fill-muted-foreground text-lg"
-                            >
-                                de {weeklyGoal?.toLocaleString()}
-                            </text>
-                          </RadialBarChart>
-                        </ChartContainer>
-                    ) : (
-                        <div className="text-center text-muted-foreground p-8">
-                            <p>Define una meta y bloquéala para empezar a rastrear.</p>
-                        </div>
-                    )}
-                     {isGoalLocked && weeklyGoal && (
-                        <p className="text-center mt-4 text-muted-foreground font-medium">
-                            {remainingForGoal > 0
-                            ? `¡Vamos, sí se puede! Te faltan ${remainingForGoal} para llegar a tu meta.`
-                            : "¡Felicidades, has alcanzado tu meta semanal!"}
-                        </p>
-                    )}
+                <CardContent>
+                  <ChartContainer config={barChartConfig} className="w-full h-[250px]">
+                      <BarChart data={barChartData} margin={{ top: 20, right: 20, left: -10, bottom: 5 }}>
+                        <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false}/>
+                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                        <Tooltip
+                          content={<ChartTooltipContent 
+                            labelClassName="font-bold text-primary"
+                            indicator="dot"
+                          />}
+                          cursor={{ fill: "hsl(var(--muted))" }}
+                         />
+                        <Bar dataKey="trámites" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                  </ChartContainer>
                 </CardContent>
              </Card>
+
         </div>
     </main>
   );
 }
+
+
+    
