@@ -5,17 +5,18 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, BarChart3, Frame, Combine, FileCog, Files } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, Frame, FileCog } from 'lucide-react';
 import { getReversePdfAsDataUri, extractDocumentDetails, fetchFrameFromDB } from '../actions';
-import { framePdfClient, mergePdfsClient, modifyReversePdfClient } from '@/lib/pdf-utils';
+import { framePdfClient, mergePdfsClient, modifyReversePdfClient, addFolioToPdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ReverseSideEntry } from '@/lib/types';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
-type LoadingStep = 'idle' | 'finding_frame' | 'framing' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'done';
+type LoadingStep = 'idle' | 'finding_frame' | 'framing' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'foliating' | 'done';
 
 const loadingMessages: Record<LoadingStep, string> = {
   idle: 'Esperando para empezar...',
@@ -25,6 +26,7 @@ const loadingMessages: Record<LoadingStep, string> = {
   matching: 'Buscando el reverso correcto...',
   modifying: 'Creando el nuevo código QR para el reverso...',
   merging: 'Fusionando el acta enmarcada con el reverso...',
+  foliating: 'Añadiendo el folio y código de barras...',
   done: '¡Tu documento enmarcado está listo!',
 };
 
@@ -70,6 +72,7 @@ export default function FrameClient() {
   const [availableStates, setAvailableStates] = useState<string[]>([]);
   const [entity, setEntity] = useState<string | null>(null);
   const [extractedCurp, setExtractedCurp] = useState<string | null>(null);
+  const [addFolio, setAddFolio] = useState(false);
   
   const { toast } = useToast();
   const router = useRouter();
@@ -105,6 +108,7 @@ export default function FrameClient() {
     setEntity(null);
     setManualEntity("");
     setExtractedCurp(null);
+    setAddFolio(false);
   }, [previewUrl]);
 
   const handleFileChange = (file: File | null) => {
@@ -220,7 +224,12 @@ export default function FrameClient() {
       const [framedPdf, modifiedReversePdfUri] = await Promise.all([framedPdfPromise, modifiedReversePdfPromise]);
 
       setLoadingStep('merging');
-      const mergedPdf = await mergePdfsClient(framedPdf, modifiedReversePdfUri);
+      let mergedPdf = await mergePdfsClient(framedPdf, modifiedReversePdfUri);
+
+      if (addFolio) {
+        setLoadingStep('foliating');
+        mergedPdf = await addFolioToPdfClient(mergedPdf);
+      }
 
       setFinalPdfUrl(mergedPdf);
       await setPreviewFromDataUri(mergedPdf);
@@ -277,7 +286,7 @@ export default function FrameClient() {
           </div>
         ) : (
           <div className="pt-4 space-y-4">
-              <p className="text-sm text-muted-foreground">Selecciona manually el estado para encontrar el reverso.</p>
+              <p className="text-sm text-muted-foreground">Selecciona manualmente el estado para encontrar el reverso.</p>
                <Select onValueChange={setManualEntity} value={manualEntity}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona un estado..." />
@@ -316,7 +325,20 @@ export default function FrameClient() {
       </header>
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="flex flex-col space-y-8">
+          <Card>
+              <CardHeader>
+                  <CardTitle>Configuración</CardTitle>
+              </CardHeader>
+              <CardContent>
+                  <div className="flex items-center space-x-2">
+                      <Switch id="folio-switch" checked={addFolio} onCheckedChange={setAddFolio} />
+                      <Label htmlFor="folio-switch">¿Añadir Folio y Código de Barras?</Label>
+                  </div>
+              </CardContent>
+          </Card>
+          
           {originalFile ? renderProcessingState() : renderDropzone()}
+          
           {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
         </div>
         <div className="lg:h-[70vh]">
@@ -361,5 +383,3 @@ export default function FrameClient() {
     </main>
   );
 }
-
-    
