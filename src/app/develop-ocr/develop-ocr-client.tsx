@@ -37,6 +37,8 @@ function extraerDatosEspeciales(texto: string): OcrResult {
   if (matchId) {
     identificador = matchId[1] || matchId[2];
   } else {
+    // Fallback regex if the label is slightly different or missing.
+    // This is more brittle and might need adjustment based on real examples.
     const fallbackRegexId = /(\d{2}\s\d{2}\s\d{4})\s\d{5}/;
     const fallbackMatch = limpio.match(fallbackRegexId);
     if(fallbackMatch) {
