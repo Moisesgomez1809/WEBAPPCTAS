@@ -145,7 +145,7 @@ export default function DevelopOcrClient() {
   const renderDropzone = () => (
     <div
       {...handleDragEvents}
-      className={`relative flex flex-col items-center justify-center w-full p-10 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/70 hover:bg-secondary'}`}
+      className={'relative flex flex-col items-center justify-center w-full p-10 border-2 border-dashed rounded-lg cursor-pointer transition-colors ' + (isDragging ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/70 hover:bg-secondary')}
       onClick={() => document.getElementById('file-upload')?.click()}
     >
       <FileUp className="w-16 h-16 text-primary mb-4" />
@@ -214,7 +214,7 @@ export default function DevelopOcrClient() {
                 <CardDescription>
                   {previewUrl ? 'Vista previa de tu documento cargado.' : 'Sube un archivo para ver la vista previa.'}
                 </CardDescription>
-            </Header>
+            </CardHeader>
             <CardContent className="flex-grow">
               <div className="w-full h-full bg-secondary rounded-lg flex items-center justify-center">
                 {previewUrl ? (
