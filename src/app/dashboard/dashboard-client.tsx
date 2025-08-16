@@ -100,7 +100,7 @@ export default function DashboardClient() {
   const [addFolio, setAddFolio] = useState(false);
   const [curpQuery, setCurpQuery] = useState('');
   const [birthStateResult, setBirthStateResult] = useState<string | null>(null);
-  const [mode, setMode] = useState<OperationMode>('manual');
+  const [mode, setMode] = useState<OperationMode>('ocr');
   const [ocrStatus, setOcrStatus] = useState<OcrStatus>('idle');
   const [ocrData, setOcrData] = useState<OcrData>({ curp: '', electronicId: '', issuingEntity: ''});
 
