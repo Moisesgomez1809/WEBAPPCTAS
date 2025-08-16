@@ -94,14 +94,33 @@ export default function DevelopOcrClient() {
             const typedarray = new Uint8Array(e.target.result as ArrayBuffer);
             const pdf = await pdfjsLib.getDocument(typedarray).promise;
             let fullText = '';
+            let rawTextItems: any[] = [];
 
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
+                // Store raw items to preserve structure
+                rawTextItems = rawTextItems.concat(textContent.items);
+                // Join for regex matching
                 fullText += textContent.items.map(item => 'str' in item ? item.str : '').join(' ');
             }
             
-            setFullExtractedText(fullText);
+            // Reconstruct text preserving some structure for display
+            let displayText = '';
+            let lastY = -1;
+            rawTextItems.sort((a,b) => b.transform[5] - a.transform[5] || a.transform[4] - b.transform[4]);
+            for(const item of rawTextItems) {
+                if ('str' in item) {
+                    if(lastY !== -1 && Math.abs(item.transform[5] - lastY) > 5) {
+                        displayText += '\n';
+                    }
+                    displayText += item.str;
+                    lastY = item.transform[5];
+                }
+            }
+
+
+            setFullExtractedText(displayText);
             const data = await extraerDatosEspeciales(fullText);
 
             if (!data.curp && !data.electronicId && !data.issuingEntity) {
@@ -209,11 +228,11 @@ export default function DevelopOcrClient() {
           <Card>
             <CardHeader>
               <CardTitle>Texto Completo Extraído</CardTitle>
-              <CardDescription>Usa este texto para identificar los patrones faltantes.</CardDescription>
+              <CardDescription>Usa este texto para identificar los patrones faltantes. Se han conservado los saltos de línea para mayor claridad.</CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-72 w-full rounded-md border p-4">
-                 <pre className="text-xs whitespace-pre-wrap">{fullExtractedText}</pre>
+              <ScrollArea className="h-72 w-full rounded-md border p-4 bg-secondary">
+                 <pre className="text-xs whitespace-pre-wrap font-mono">{fullExtractedText}</pre>
               </ScrollArea>
             </CardContent>
           </Card>
