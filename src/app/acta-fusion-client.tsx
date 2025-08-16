@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Files, ShoppingCart, Lock, Unlock, TrendingUp, CalendarDays, Pencil } from 'lucide-react';
+import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Files, ShoppingCart, Lock, Unlock, TrendingUp, CalendarDays, Pencil, Download } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -33,6 +33,7 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import * as XLSX from 'xlsx';
 
 import {
   RadialBarChart,
@@ -149,10 +150,18 @@ export default function ActaFusionClient() {
   };
 
   const handleManualAdjustment = () => {
-    if (adjustmentDay === "" || adjustmentAmount === 0) {
+    if (adjustmentDay === "") {
       toast({
-        title: "Datos Inválidos",
-        description: "Por favor, selecciona un día y una cantidad (positiva o negativa) distinta de cero.",
+        title: "Día no seleccionado",
+        description: "Por favor, selecciona un día para el ajuste.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (adjustmentAmount === 0) {
+      toast({
+        title: "Cantidad Inválida",
+        description: "Por favor, introduce una cantidad (positiva o negativa) distinta de cero.",
         variant: "destructive",
       });
       return;
@@ -241,6 +250,36 @@ export default function ActaFusionClient() {
       }
     }
   };
+
+  const handleDownloadStats = () => {
+    try {
+      const dataForSheet = orderedDayIndexes.map(dayIndex => ({
+        'Día': dayNames[dayIndex],
+        'Cantidad': dailyStats[dayIndex] || 0
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Trámites Semanales");
+      
+      // Auto-size columns
+      const max_width = dataForSheet.reduce((w, r) => Math.max(w, r['Día'].length), 10);
+      worksheet["!cols"] = [ { wch: max_width }, { wch: 10 } ];
+
+      XLSX.writeFile(workbook, "Reporte Semanal.xlsx");
+       toast({
+          title: "Descarga Iniciada",
+          description: "Tu reporte de Excel se está descargando.",
+      });
+    } catch(e) {
+      console.error("Failed to generate Excel file", e);
+      toast({
+          title: "Error de Descarga",
+          description: "No se pudo generar el archivo de Excel.",
+          variant: "destructive"
+      });
+    }
+  }
   
   const todayIndex = new Date().getDay();
 
@@ -276,54 +315,60 @@ export default function ActaFusionClient() {
                           <CalendarDays className="h-6 w-6 text-primary"/>
                           <CardTitle>Trámites de la Semana</CardTitle>
                       </div>
-                       <Dialog open={isAdjustmentDialogOpen} onOpenChange={setIsAdjustmentDialogOpen}>
-                        <DialogTrigger asChild>
-                           <Button variant="outline" size="icon">
-                              <Pencil className="h-4 w-4" />
-                              <span className="sr-only">Ajuste Manual</span>
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[425px]">
-                          <DialogHeader>
-                            <DialogTitle>Ajuste Manual de Trámites</DialogTitle>
-                            <DialogDescription>
-                              Agrega o resta trámites a un día específico de la semana actual.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="day" className="text-right">Día</Label>
-                               <Select onValueChange={setAdjustmentDay} value={adjustmentDay}>
-                                <SelectTrigger className="col-span-3">
-                                  <SelectValue placeholder="Selecciona un día" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {orderedDayIndexes.map(dayIndex => (
-                                      <SelectItem key={dayIndex} value={dayIndex.toString()}>{dayNames[dayIndex]}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                              </Select>
+                      <div className="flex items-center space-x-1">
+                        <Button variant="outline" size="icon" onClick={handleDownloadStats}>
+                           <Download className="h-4 w-4" />
+                           <span className="sr-only">Descargar Reporte</span>
+                         </Button>
+                        <Dialog open={isAdjustmentDialogOpen} onOpenChange={setIsAdjustmentDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="icon">
+                                <Pencil className="h-4 w-4" />
+                                <span className="sr-only">Ajuste Manual</span>
+                              </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                              <DialogTitle>Ajuste Manual de Trámites</DialogTitle>
+                              <DialogDescription>
+                                Agrega o resta trámites a un día específico de la semana actual.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                              <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="day" className="text-right">Día</Label>
+                                <Select onValueChange={setAdjustmentDay} value={adjustmentDay}>
+                                  <SelectTrigger className="col-span-3">
+                                    <SelectValue placeholder="Selecciona un día" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                      {orderedDayIndexes.map(dayIndex => (
+                                        <SelectItem key={dayIndex} value={dayIndex.toString()}>{dayNames[dayIndex]}</SelectItem>
+                                      ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="amount" className="text-right">Cantidad</Label>
+                                <Input
+                                  id="amount"
+                                  type="number"
+                                  placeholder="+10, -5, etc."
+                                  className="col-span-3"
+                                  value={adjustmentAmount || ''}
+                                  onChange={e => setAdjustmentAmount(parseInt(e.target.value, 10) || 0)}
+                                />
+                              </div>
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="amount" className="text-right">Cantidad</Label>
-                              <Input
-                                id="amount"
-                                type="number"
-                                placeholder="+10, -5, etc."
-                                className="col-span-3"
-                                value={adjustmentAmount || ''}
-                                onChange={e => setAdjustmentAmount(parseInt(e.target.value, 10) || 0)}
-                              />
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <DialogClose asChild>
-                              <Button type="button" variant="secondary">Cancelar</Button>
-                            </DialogClose>
-                            <Button type="submit" onClick={handleManualAdjustment}>Guardar Ajuste</Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                            <DialogFooter>
+                              <DialogClose asChild>
+                                <Button type="button" variant="secondary">Cancelar</Button>
+                              </DialogClose>
+                              <Button type="submit" onClick={handleManualAdjustment}>Guardar Ajuste</Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
                     </div>
                     <CardDescription>Resumen de los trámites realizados durante la semana actual.</CardDescription>
                 </CardHeader>
@@ -477,6 +522,8 @@ export default function ActaFusionClient() {
     </main>
   );
 }
+
+    
 
     
 
