@@ -2,11 +2,11 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Files, ShoppingCart, Lock, Unlock, TrendingUp, CalendarDays } from 'lucide-react';
+import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Files, ShoppingCart, Lock, Unlock, TrendingUp, CalendarDays, Pencil } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -19,8 +19,21 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress";
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import {
   RadialBarChart,
   RadialBar,
@@ -57,12 +70,15 @@ export default function ActaFusionClient() {
   const [dailyStats, setDailyStats] = useState<number[]>(Array(7).fill(0));
   const [weeklyGoal, setWeeklyGoal] = useState<number | null>(null);
   const [isGoalLocked, setIsGoalLocked] = useState(false);
+  const [adjustmentDay, setAdjustmentDay] = useState<string>("");
+  const [adjustmentAmount, setAdjustmentAmount] = useState<number>(0);
+  const [isAdjustmentDialogOpen, setIsAdjustmentDialogOpen] = useState(false);
 
   const router = useRouter();
   const { toast } = useToast();
 
-  useEffect(() => {
-    // This effect should only run on the client side
+  const loadDataFromLocalStorage = () => {
+     // This effect should only run on the client side
     const totalFusions = parseInt(localStorage.getItem('fusionCount') || '0', 10);
     setStats({ total: totalFusions });
 
@@ -95,6 +111,10 @@ export default function ActaFusionClient() {
 
     if (savedGoal) setWeeklyGoal(parseInt(savedGoal, 10));
     if (savedIsLocked) setIsGoalLocked(JSON.parse(savedIsLocked));
+  };
+
+  useEffect(() => {
+    loadDataFromLocalStorage();
   }, []);
   
   const handleResetStats = () => {
@@ -118,6 +138,59 @@ export default function ActaFusionClient() {
         toast({
             title: "Error",
             description: "No se pudieron reiniciar las estadísticas.",
+            variant: "destructive"
+        });
+    }
+  };
+
+  const handleManualAdjustment = () => {
+    if (adjustmentDay === "" || adjustmentAmount <= 0) {
+      toast({
+        title: "Datos Inválidos",
+        description: "Por favor, selecciona un día y una cantidad mayor que cero.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const dayIndex = parseInt(adjustmentDay, 10);
+
+    try {
+      const storedStatsRaw = localStorage.getItem('dailyFusionStats');
+      if (storedStatsRaw) {
+        const parsedStats = JSON.parse(storedStatsRaw);
+        // Ensure we don't add to a past week's stats
+        const today = new Date();
+        const currentWeek = getWeekNumber(today);
+        if (parsedStats.weekNumber === currentWeek) {
+            parsedStats.counts[dayIndex] += adjustmentAmount;
+            localStorage.setItem('dailyFusionStats', JSON.stringify(parsedStats));
+            
+            // Reload data to reflect changes
+            loadDataFromLocalStorage();
+
+            toast({
+                title: "Ajuste Exitoso",
+                description: `Se agregaron ${adjustmentAmount} trámites al ${dayNames[dayIndex]}.`
+            });
+
+            // Reset form and close dialog
+            setAdjustmentDay("");
+            setAdjustmentAmount(0);
+            setIsAdjustmentDialogOpen(false);
+        } else {
+             toast({
+                title: "Semana Desactualizada",
+                description: "Las estadísticas son de una semana pasada. No se realizó el ajuste.",
+                variant: "destructive",
+            });
+        }
+      }
+    } catch(e) {
+        console.error("Failed to apply manual adjustment", e);
+         toast({
+            title: "Error",
+            description: "No se pudo aplicar el ajuste manual.",
             variant: "destructive"
         });
     }
@@ -186,9 +259,58 @@ export default function ActaFusionClient() {
 
             <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
                 <CardHeader>
-                    <div className="flex items-center space-x-2">
-                        <CalendarDays className="h-6 w-6 text-primary"/>
-                        <CardTitle>Trámites de la Semana</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                          <CalendarDays className="h-6 w-6 text-primary"/>
+                          <CardTitle>Trámites de la Semana</CardTitle>
+                      </div>
+                       <Dialog open={isAdjustmentDialogOpen} onOpenChange={setIsAdjustmentDialogOpen}>
+                        <DialogTrigger asChild>
+                           <Button variant="outline" size="icon">
+                              <Pencil className="h-4 w-4" />
+                              <span className="sr-only">Ajuste Manual</span>
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                          <DialogHeader>
+                            <DialogTitle>Ajuste Manual de Trámites</DialogTitle>
+                            <DialogDescription>
+                              Agrega trámites a un día específico de la semana actual. Esta acción es aditiva.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                              <Label htmlFor="day" className="text-right">Día</Label>
+                               <Select onValueChange={setAdjustmentDay} value={adjustmentDay}>
+                                <SelectTrigger className="col-span-3">
+                                  <SelectValue placeholder="Selecciona un día" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {orderedDayIndexes.map(dayIndex => (
+                                      <SelectItem key={dayIndex} value={dayIndex.toString()}>{dayNames[dayIndex]}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                              <Label htmlFor="amount" className="text-right">Cantidad</Label>
+                              <Input
+                                id="amount"
+                                type="number"
+                                className="col-span-3"
+                                value={adjustmentAmount || ''}
+                                onChange={e => setAdjustmentAmount(parseInt(e.target.value, 10) || 0)}
+                              />
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <DialogClose asChild>
+                              <Button type="button" variant="secondary">Cancelar</Button>
+                            </DialogClose>
+                            <Button type="submit" onClick={handleManualAdjustment}>Guardar Ajuste</Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                     <CardDescription>Resumen de los trámites realizados durante la semana actual.</CardDescription>
                 </CardHeader>
