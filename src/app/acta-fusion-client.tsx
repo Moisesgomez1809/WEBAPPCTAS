@@ -123,31 +123,6 @@ export default function ActaFusionClient() {
     loadDataFromLocalStorage();
   }, []);
   
-  const handleResetStats = () => {
-    try {
-        localStorage.setItem('fusionCount', '0');
-        localStorage.removeItem('dailyFusionStats');
-        localStorage.removeItem('weeklyGoal');
-        localStorage.removeItem('isGoalLocked');
-
-        setStats({ total: 0 });
-        setDailyStats(Array(7).fill(0));
-        setWeeklyGoal(null);
-        setIsGoalLocked(false);
-        
-        toast({
-            title: "Estadísticas Reiniciadas",
-            description: "Los contadores han sido puestos a cero.",
-        });
-    } catch (e) {
-        console.error("Failed to reset stats", e);
-        toast({
-            title: "Error",
-            description: "No se pudieron reiniciar las estadísticas.",
-            variant: "destructive"
-        });
-    }
-  };
 
   const handleManualAdjustment = () => {
     if (adjustmentDay === "") {
@@ -465,66 +440,7 @@ export default function ActaFusionClient() {
                     )}
                 </CardContent>
              </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Acciones Rápidas</CardTitle>
-                    <CardDescription>Gestiona tu aplicación y tus datos desde aquí.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                     <Link href="/dashboard" className="w-full">
-                        <Button variant="outline" className="w-full h-12">
-                            <Combine className="mr-2 h-4 w-4" />
-                            Ir a Acta Fusion
-                        </Button>
-                    </Link>
-                     <Link href="/bulk-fusion" className="w-full">
-                        <Button variant="outline" className="w-full h-12">
-                            <Files className="mr-2 h-4 w-4" />
-                            Ir a Fusión Masiva
-                        </Button>
-                    </Link>
-                    <Link href="/frame" className="w-full">
-                        <Button variant="outline" className="w-full h-12">
-                            <Frame className="mr-2 h-4 w-4" />
-                            Ir a Enmarcar
-                        </Button>
-                    </Link>
-                    <Link href="/metadata" className="w-full">
-                        <Button variant="outline" className="w-full h-12">
-                            <FileCog className="mr-2 h-4 w-4" />
-                            Modificar Metadata
-                        </Button>
-                    </Link>
-                     <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                             <Button variant="destructive" className="w-full h-12 col-span-full">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Reiniciar Estadísticas
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>¿Estás absolutely seguro?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Esta acción no se puede deshacer. Esto pondrá a cero todos los contadores de trámites, tanto el histórico como los diarios.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleResetStats}>Continuar</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </CardContent>
-            </Card>
         </div>
     </main>
   );
 }
-
-    
-
-    
-
-    
