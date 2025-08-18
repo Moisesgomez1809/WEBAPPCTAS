@@ -26,7 +26,7 @@ const loadingMessages: Record<LoadingStep, string> = {
   matching: 'Buscando el reverso correcto...',
   modifying: 'Creando el nuevo código QR para el reverso...',
   merging: 'Fusionando el acta enmarcada con el reverso...',
-  foliating: 'Añadiendo el folio y código de barras...',
+  foliating: 'Añadiendo el folio...',
   done: '¡Tu documento enmarcado está listo!',
 };
 
@@ -286,7 +286,7 @@ export default function FrameClient() {
           </div>
         ) : (
           <div className="pt-4 space-y-4">
-              <p className="text-sm text-muted-foreground">Selecciona manualmente el estado para encontrar el reverso.</p>
+              <p className="text-sm text-muted-foreground">Selecciona manually el estado para encontrar el reverso.</p>
                <Select onValueChange={setManualEntity} value={manualEntity}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona un estado..." />
@@ -332,7 +332,7 @@ export default function FrameClient() {
               <CardContent>
                   <div className="flex items-center space-x-2">
                       <Switch id="folio-switch" checked={addFolio} onCheckedChange={setAddFolio} />
-                      <Label htmlFor="folio-switch">¿Añadir Folio y Código de Barras?</Label>
+                      <Label htmlFor="folio-switch">¿Añadir Folio?</Label>
                   </div>
               </CardContent>
           </Card>

@@ -156,7 +156,7 @@ export async function addFolioToPdfClient(pdfUri: string): Promise<string> {
 
     } catch (error) {
         console.error("Error adding folio to PDF:", error);
-        throw new Error("Failed to add folio and barcode to the document.");
+        throw new Error("Failed to add folio to the document.");
     }
 }
 
