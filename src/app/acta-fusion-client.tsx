@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Files, ShoppingCart, Lock, Unlock, TrendingUp, CalendarDays, Pencil, Download, History } from 'lucide-react';
+import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Files, ShoppingCart, Lock, Unlock, TrendingUp, CalendarDays, Pencil, Download, History, AlertCircle, Search } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -36,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import * as XLSX from 'xlsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 import {
   RadialBarChart,
@@ -97,6 +98,8 @@ export default function ActaFusionClient() {
   const [fullHistory, setFullHistory] = useState<DisplayHistoryItem[]>([]);
   const [filteredHistory, setFilteredHistory] = useState<DisplayHistoryItem[]>([]);
   const [historyFilter, setHistoryFilter] = useState<string>("all");
+  const [curpSearchQuery, setCurpSearchQuery] = useState<string>("");
+
 
   const router = useRouter();
   const { toast } = useToast();
@@ -166,13 +169,23 @@ export default function ActaFusionClient() {
   }, []);
 
   useEffect(() => {
-    if (historyFilter === 'all') {
-        setFilteredHistory(fullHistory);
-    } else {
-        const dayIndex = parseInt(historyFilter, 10);
-        setFilteredHistory(fullHistory.filter(item => item.dayIndex === dayIndex));
+    let newFilteredHistory = fullHistory;
+
+    // Filter by day
+    if (historyFilter !== 'all') {
+      const dayIndex = parseInt(historyFilter, 10);
+      newFilteredHistory = newFilteredHistory.filter(item => item.dayIndex === dayIndex);
     }
-  }, [historyFilter, fullHistory])
+
+    // Filter by CURP search query
+    if (curpSearchQuery) {
+        newFilteredHistory = newFilteredHistory.filter(item => 
+            item.curp.toLowerCase().includes(curpSearchQuery.toLowerCase())
+        );
+    }
+    
+    setFilteredHistory(newFilteredHistory);
+  }, [historyFilter, curpSearchQuery, fullHistory]);
   
 
   const handleManualAdjustment = () => {
@@ -584,6 +597,15 @@ export default function ActaFusionClient() {
                           <CardTitle>Historial de Trámites de la Semana</CardTitle>
                       </div>
                       <div className="flex items-center space-x-2">
+                        <div className="relative">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Buscar CURP..."
+                                value={curpSearchQuery}
+                                onChange={(e) => setCurpSearchQuery(e.target.value)}
+                                className="pl-8 w-40"
+                            />
+                        </div>
                         <Select value={historyFilter} onValueChange={setHistoryFilter}>
                             <SelectTrigger className="w-[180px]">
                                 <SelectValue placeholder="Filtrar por día..." />
@@ -632,6 +654,13 @@ export default function ActaFusionClient() {
                             </TableBody>
                         </Table>
                     </ScrollArea>
+                     <Alert variant="destructive" className="mt-4">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Advertencia</AlertTitle>
+                        <AlertDescription>
+                          El historial se guarda localmente en el navegador. Si borras la caché o las cookies de este sitio, estos datos serán eliminados sin posibilidad de recuperación.
+                        </AlertDescription>
+                    </Alert>
                 </CardContent>
             </Card>
 
@@ -639,3 +668,5 @@ export default function ActaFusionClient() {
     </main>
   );
 }
+
+    
