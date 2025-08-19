@@ -392,6 +392,14 @@ export default function ActaFusionClient() {
             </p>
         </header>
 
+        <Alert variant="destructive" className="w-full max-w-7xl mb-8">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Advertencia</AlertTitle>
+            <AlertDescription>
+                Los contadores, metas, estadisticas e historial de tramites se guarda localmente en el navegador. Si borras la caché o las cookies de este sitio, estos datos serán eliminados sin posibilidad de recuperación.
+            </AlertDescription>
+        </Alert>
+
         <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -654,13 +662,6 @@ export default function ActaFusionClient() {
                             </TableBody>
                         </Table>
                     </ScrollArea>
-                     <Alert variant="destructive" className="mt-4">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Advertencia</AlertTitle>
-                        <AlertDescription>
-                          El historial se guarda localmente en el navegador. Si borras la caché o las cookies de este sitio, estos datos serán eliminados sin posibilidad de recuperación.
-                        </AlertDescription>
-                    </Alert>
                 </CardContent>
             </Card>
 
@@ -668,5 +669,3 @@ export default function ActaFusionClient() {
     </main>
   );
 }
-
-    
