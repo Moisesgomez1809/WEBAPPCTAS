@@ -114,7 +114,8 @@ export default function MetadataClient() {
 
       const link = document.createElement('a');
       link.href = modifiedPdfUrl;
-      link.download = originalFile?.name || 'documento-modificado.pdf';
+      const fileName = originalFile?.name.replace('.pdf', '_SIST.pdf') || 'documento-modificado_SIST.pdf';
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

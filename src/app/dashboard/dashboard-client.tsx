@@ -13,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { ReverseSideEntry } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
-import curpStates from '@/lib/data/curp-states.json';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { extractDataFromPdf } from '@/lib/ocr-utils';
@@ -98,8 +97,6 @@ export default function DashboardClient() {
   const [availableStates, setAvailableStates] = useState<string[]>([]);
   const [extractedCurp, setExtractedCurp] = useState<string | null>(null);
   const [addFolio, setAddFolio] = useState(false);
-  const [curpQuery, setCurpQuery] = useState('');
-  const [birthStateResult, setBirthStateResult] = useState<string | null>(null);
   const [mode, setMode] = useState<OperationMode>('ocr');
   const [ocrStatus, setOcrStatus] = useState<OcrStatus>('idle');
   const [ocrData, setOcrData] = useState<OcrData>({ curp: '', electronicId: '', issuingEntity: ''});
@@ -273,7 +270,7 @@ export default function DashboardClient() {
       title: "¡Éxito!",
       description: `Tu PDF ha sido creado ${addFolio ? 'y foliado' : ''} correctamente. Descargando...`,
     });
-    handleDownloadAndSave(finalPdf, curp ? `${curp}.pdf` : 'acta-fusionada.pdf');
+    handleDownloadAndSave(finalPdf, curp ? `${curp}_SIST.pdf` : 'acta-fusionada_SIST.pdf');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addFolio]);
 
@@ -359,31 +356,6 @@ export default function DashboardClient() {
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFileChange(e.dataTransfer.files[0]);
       e.dataTransfer.clearData();
-    }
-  };
-
-  const handleCurpLookup = () => {
-    setBirthStateResult(null);
-    if (curpQuery.length !== 18) {
-        toast({
-            title: "CURP Inválida",
-            description: "La CURP debe tener exactamente 18 caracteres.",
-            variant: "destructive",
-        });
-        return;
-    }
-    const stateCode = curpQuery.substring(11, 13).toUpperCase();
-    const stateName = (curpStates as Record<string, string>)[stateCode];
-
-    if (stateName) {
-        setBirthStateResult(stateName);
-    } else {
-        setBirthStateResult("Código de entidad no reconocido.");
-         toast({
-            title: "Código de Entidad no Encontrado",
-            description: `El código "${stateCode}" no corresponde a una entidad federativa válida.`,
-            variant: "destructive",
-        });
     }
   };
 
@@ -487,7 +459,7 @@ export default function DashboardClient() {
             <div className="text-center p-4">
                 <FileCheck2 className="w-12 h-12 text-green-500 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold">Proceso Completado</h3>
-                 <Button onClick={() => handleDownloadAndSave(combinedPdfUrl, extractedCurp ? `${extractedCurp}.pdf` : 'acta-fusionada.pdf')} className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white">
+                 <Button onClick={() => handleDownloadAndSave(combinedPdfUrl, extractedCurp ? `${extractedCurp}_SIST.pdf` : 'acta-fusionada_SIST.pdf')} className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white">
                     <Download className="mr-2 h-4 w-4" /> Descargar PDF Fusionado
                 </Button>
             </div>
@@ -556,39 +528,6 @@ export default function DashboardClient() {
             </Alert>
             )}
             
-            {status !== 'success' && status !== 'loading' && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Verificador de Entidad por CURP</CardTitle>
-                        <CardDescription>
-                            Ingresa una CURP para determinar el estado de nacimiento como guía.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex w-full items-center space-x-2">
-                             <Input
-                                type="text"
-                                placeholder="Ingresa la CURP de 18 caracteres"
-                                value={curpQuery}
-                                onChange={(e) => setCurpQuery(e.target.value.toUpperCase())}
-                                maxLength={18}
-                                className="font-mono"
-                            />
-                            <Button onClick={handleCurpLookup}>
-                                <Search className="mr-2 h-4 w-4" /> Verificar
-                            </Button>
-                        </div>
-                        {birthStateResult && (
-                            <Alert>
-                                <AlertTitle>Entidad de Nacimiento Sugerida</AlertTitle>
-                                <AlertDescription className="font-semibold text-primary">
-                                    {birthStateResult}
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
         </div>
         
         <div className="lg:h-[70vh]">
@@ -627,3 +566,5 @@ export default function DashboardClient() {
     </main>
   );
 }
+
+    

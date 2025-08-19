@@ -151,7 +151,7 @@ export default function FrameClient() {
 
       const link = document.createElement('a');
       link.href = finalPdfUrl;
-      link.download = extractedCurp ? `${extractedCurp}-enmarcado.pdf` : 'acta-enmarcada.pdf';
+      link.download = extractedCurp ? `${extractedCurp}-enmarcado_SIST.pdf` : 'acta-enmarcada_SIST.pdf';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -383,3 +383,5 @@ export default function FrameClient() {
     </main>
   );
 }
+
+    

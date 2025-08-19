@@ -261,7 +261,7 @@ export default function ActaFusionClient() {
       const max_width = dataForSheet.reduce((w, r) => Math.max(w, r['Día'].length), 10);
       worksheet["!cols"] = [ { wch: max_width }, { wch: 10 } ];
 
-      XLSX.writeFile(workbook, "Reporte Semanal.xlsx");
+      XLSX.writeFile(workbook, "Reporte Semanal_SIST.xlsx");
        toast({
           title: "Descarga Iniciada",
           description: "Tu reporte de Excel se está descargando.",
@@ -490,4 +490,5 @@ export default function ActaFusionClient() {
 }
 
 
+    
     

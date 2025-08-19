@@ -230,7 +230,7 @@ export default function BulkFusionClient() {
         incrementCounters();
         const result = { ...item, status: 'success' as const, resultUrl: finalPdf, curp };
         setManualQueue(prev => prev.map(i => i.id === result.id ? result : i));
-        successfulDownloads.push({ url: finalPdf, name: `${curp}.pdf` });
+        successfulDownloads.push({ url: finalPdf, name: `${curp}_SIST.pdf` });
       } catch (e: any) {
         const errorMessage = e instanceof Error ? e.message : 'Error desconocido.';
         const result = { ...item, status: 'error' as const, error: errorMessage };
@@ -304,7 +304,7 @@ export default function BulkFusionClient() {
             
             const result = { ...item, status: 'done' as const, resultUrl: finalPdf };
             setOcrQueue(prev => prev.map(i => i.id === item.id ? result : i));
-            successfulDownloads.push({ url: finalPdf, name: `${item.curp}.pdf`});
+            successfulDownloads.push({ url: finalPdf, name: `${item.curp}_SIST.pdf`});
 
         } catch (e: any) {
              const error = e instanceof Error ? e.message : 'Error desconocido.';
@@ -387,7 +387,7 @@ export default function BulkFusionClient() {
                                             <TableCell>{item.status}</TableCell>
                                             <TableCell className="text-right">
                                                  {item.status === 'success' && item.resultUrl ? (
-                                                    <Button variant="outline" size="sm" onClick={() => downloadFile(item.resultUrl!, `${item.curp || item.file.name.replace('.pdf', '')}.pdf`)}><Download className="h-4 w-4"/></Button>
+                                                    <Button variant="outline" size="sm" onClick={() => downloadFile(item.resultUrl!, `${item.curp || item.file.name.replace('.pdf', '')}_SIST.pdf`)}><Download className="h-4 w-4"/></Button>
                                                   ) : (
                                                     <Button variant="ghost" size="icon" onClick={() => handleRemoveFromManualQueue(item.id)} disabled={isProcessingManual}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                                                   )}
@@ -531,4 +531,5 @@ export default function BulkFusionClient() {
   );
 }
 
+    
     
