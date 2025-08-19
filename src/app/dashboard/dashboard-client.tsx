@@ -28,6 +28,16 @@ interface OcrData {
   issuingEntity: string;
 }
 
+// --- LocalStorage Types ---
+interface DailyStats {
+  weekNumber: number;
+  counts: number[];
+}
+
+interface CurpHistory {
+  weekNumber: number;
+  history: Record<number, string[]>;
+}
 
 const loadingMessages: Record<LoadingStep, string> = {
   idle: 'Esperando para empezar...',
@@ -220,37 +230,53 @@ export default function DashboardClient() {
     }
   };
   
-  const handleDownloadAndSave = (url: string, name: string) => {
+  const handleDownloadAndSave = (url: string, name: string, curp: string | null) => {
      try {
+      const today = new Date();
+      const currentWeek = getWeekNumber(today);
+      const dayIndex = today.getDay();
+
+      // Increment total count
       const currentFusionCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
       localStorage.setItem('fusionCount', (currentFusionCount + 1).toString());
 
-      // Update daily stats
-        const today = new Date();
-        const currentWeek = getWeekNumber(today);
-        const dayIndex = today.getDay();
-
-        const storedStatsRaw = localStorage.getItem('dailyFusionStats');
-        let dailyStats = { weekNumber: currentWeek, counts: Array(7).fill(0) };
-
-        if (storedStatsRaw) {
-            try {
-                const parsed = JSON.parse(storedStatsRaw);
-                if (parsed.weekNumber === currentWeek) {
-                    dailyStats = parsed;
-                }
-            } catch (e) { console.error(e); }
-        }
-
-        dailyStats.counts[dayIndex]++;
-        localStorage.setItem('dailyFusionStats', JSON.stringify(dailyStats));
+      // Update daily stats count
+      const storedStatsRaw = localStorage.getItem('dailyFusionStats');
+      let dailyStats: DailyStats = { weekNumber: currentWeek, counts: Array(7).fill(0) };
+      if (storedStatsRaw) {
+          try {
+              const parsed = JSON.parse(storedStatsRaw);
+              if (parsed.weekNumber === currentWeek) dailyStats = parsed;
+          } catch (e) { console.error(e); }
+      }
+      dailyStats.counts[dayIndex] = (dailyStats.counts[dayIndex] || 0) + 1;
+      localStorage.setItem('dailyFusionStats', JSON.stringify(dailyStats));
       
+      // Add CURP to history
+      if (curp) {
+        const storedHistoryRaw = localStorage.getItem('curpHistory');
+        let curpHistory: CurpHistory = { weekNumber: currentWeek, history: {} };
+        if (storedHistoryRaw) {
+            try {
+                const parsed = JSON.parse(storedHistoryRaw);
+                if (parsed.weekNumber === currentWeek) curpHistory = parsed;
+            } catch(e) { console.error(e); }
+        }
+        if (!curpHistory.history[dayIndex]) {
+            curpHistory.history[dayIndex] = [];
+        }
+        curpHistory.history[dayIndex].push(curp);
+        localStorage.setItem('curpHistory', JSON.stringify(curpHistory));
+      }
+
+      // Trigger download
       const link = document.createElement('a');
       link.href = url;
       link.download = name;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
     } catch (e) {
         console.error("Failed to save data or download", e);
         toast({
@@ -270,7 +296,8 @@ export default function DashboardClient() {
       title: "¡Éxito!",
       description: `Tu PDF ha sido creado ${addFolio ? 'y foliado' : ''} correctamente. Descargando...`,
     });
-    handleDownloadAndSave(finalPdf, curp ? `${curp}_SIST.pdf` : 'acta-fusionada_SIST.pdf');
+    const fileName = curp ? `${curp}_SIST.pdf` : 'acta-fusionada_SIST.pdf';
+    handleDownloadAndSave(finalPdf, fileName, curp);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addFolio]);
 
@@ -459,7 +486,7 @@ export default function DashboardClient() {
             <div className="text-center p-4">
                 <FileCheck2 className="w-12 h-12 text-green-500 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold">Proceso Completado</h3>
-                 <Button onClick={() => handleDownloadAndSave(combinedPdfUrl, extractedCurp ? `${extractedCurp}_SIST.pdf` : 'acta-fusionada_SIST.pdf')} className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white">
+                 <Button onClick={() => handleDownloadAndSave(combinedPdfUrl, extractedCurp ? `${extractedCurp}_SIST.pdf` : 'acta-fusionada_SIST.pdf', extractedCurp)} className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white">
                     <Download className="mr-2 h-4 w-4" /> Descargar PDF Fusionado
                 </Button>
             </div>
@@ -566,5 +593,3 @@ export default function DashboardClient() {
     </main>
   );
 }
-
-    

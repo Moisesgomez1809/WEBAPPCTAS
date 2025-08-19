@@ -57,6 +57,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('dailyFusionStats');
         localStorage.removeItem('weeklyGoal');
         localStorage.removeItem('isGoalLocked');
+        localStorage.removeItem('curpHistory');
         
         toast({
             title: "Estadísticas Reiniciadas",

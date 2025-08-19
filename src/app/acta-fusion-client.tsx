@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Files, ShoppingCart, Lock, Unlock, TrendingUp, CalendarDays, Pencil, Download } from 'lucide-react';
+import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Files, ShoppingCart, Lock, Unlock, TrendingUp, CalendarDays, Pencil, Download, History } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -34,6 +34,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import * as XLSX from 'xlsx';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 import {
   RadialBarChart,
@@ -61,6 +63,17 @@ interface DailyStats {
   counts: number[]; // Index 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 }
 
+interface CurpHistory {
+  weekNumber: number;
+  history: Record<number, string[]>; // { 0: ["curp1", "curp2"], 1: ["curp3"], ... }
+}
+
+interface DisplayHistoryItem {
+    curp: string;
+    day: string;
+    dayIndex: number;
+}
+
 // Helper to get the ISO week number
 const getWeekNumber = (d: Date): number => {
   d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -81,6 +94,9 @@ export default function ActaFusionClient() {
   const [adjustmentDay, setAdjustmentDay] = useState<string>("");
   const [adjustmentAmount, setAdjustmentAmount] = useState<number>(0);
   const [isAdjustmentDialogOpen, setIsAdjustmentDialogOpen] = useState(false);
+  const [fullHistory, setFullHistory] = useState<DisplayHistoryItem[]>([]);
+  const [filteredHistory, setFilteredHistory] = useState<DisplayHistoryItem[]>([]);
+  const [historyFilter, setHistoryFilter] = useState<string>("all");
 
   const router = useRouter();
   const { toast } = useToast();
@@ -90,23 +106,18 @@ export default function ActaFusionClient() {
     const totalFusions = parseInt(localStorage.getItem('fusionCount') || '0', 10);
     setStats({ total: totalFusions });
 
-    // Load daily stats
     const today = new Date();
     const currentWeek = getWeekNumber(today);
+    
+    // Load daily stats
     const storedStatsRaw = localStorage.getItem('dailyFusionStats');
     let loadedStats: DailyStats = { weekNumber: currentWeek, counts: Array(7).fill(0) };
-
     if (storedStatsRaw) {
       try {
         const parsed = JSON.parse(storedStatsRaw);
-        if (parsed.weekNumber === currentWeek) {
-          loadedStats = parsed;
-        } else {
-           localStorage.setItem('dailyFusionStats', JSON.stringify(loadedStats)); // Reset for new week
-        }
-      } catch (e) {
-        console.error("Could not parse daily stats from localStorage", e);
-      }
+        if (parsed.weekNumber === currentWeek) loadedStats = parsed;
+        else localStorage.setItem('dailyFusionStats', JSON.stringify(loadedStats)); // Reset for new week
+      } catch (e) { console.error(e) }
     } else {
         localStorage.setItem('dailyFusionStats', JSON.stringify(loadedStats));
     }
@@ -116,6 +127,30 @@ export default function ActaFusionClient() {
     const weeklyTotal = loadedStats.counts.reduce((sum, count) => sum + count, 0);
     setStats({ total: weeklyTotal });
     localStorage.setItem('fusionCount', weeklyTotal.toString()); // Keep historical in sync
+
+
+    // Load CURP History
+    const storedHistoryRaw = localStorage.getItem('curpHistory');
+    let loadedHistory: CurpHistory = { weekNumber: currentWeek, history: {} };
+    if (storedHistoryRaw) {
+        try {
+            const parsed = JSON.parse(storedHistoryRaw);
+            if (parsed.weekNumber === currentWeek) loadedHistory = parsed;
+            else localStorage.setItem('curpHistory', JSON.stringify(loadedHistory)); // Reset for new week
+        } catch(e) { console.error(e); }
+    } else {
+        localStorage.setItem('curpHistory', JSON.stringify(loadedHistory));
+    }
+
+    const displayHistory: DisplayHistoryItem[] = [];
+    Object.entries(loadedHistory.history).forEach(([dayIndex, curps]) => {
+      const dayIdx = parseInt(dayIndex, 10);
+      curps.forEach(curp => {
+        displayHistory.push({ curp, day: dayNames[dayIdx], dayIndex: dayIdx });
+      });
+    });
+    setFullHistory(displayHistory);
+    setFilteredHistory(displayHistory);
 
 
     // Load weekly goal state
@@ -129,6 +164,15 @@ export default function ActaFusionClient() {
   useEffect(() => {
     loadDataFromLocalStorage();
   }, []);
+
+  useEffect(() => {
+    if (historyFilter === 'all') {
+        setFilteredHistory(fullHistory);
+    } else {
+        const dayIndex = parseInt(historyFilter, 10);
+        setFilteredHistory(fullHistory.filter(item => item.dayIndex === dayIndex));
+    }
+  }, [historyFilter, fullHistory])
   
 
   const handleManualAdjustment = () => {
@@ -275,6 +319,54 @@ export default function ActaFusionClient() {
       });
     }
   }
+
+  const handleDownloadHistory = () => {
+    if (fullHistory.length === 0) {
+        toast({ title: "No hay datos", description: "El historial de la semana está vacío.", variant: "destructive" });
+        return;
+    }
+    try {
+        const storedHistoryRaw = localStorage.getItem('curpHistory');
+        const historyData: CurpHistory = storedHistoryRaw ? JSON.parse(storedHistoryRaw) : { weekNumber: 0, history: {} };
+        const dataByDay: Record<string, string[]> = {};
+        dayNames.forEach(day => dataByDay[day] = []);
+        Object.entries(historyData.history).forEach(([dayIndex, curps]) => {
+            const dayName = dayNames[parseInt(dayIndex, 10)];
+            dataByDay[dayName].push(...curps);
+        });
+
+        const maxRows = Math.max(...Object.values(dataByDay).map(arr => arr.length));
+        const sheetData = [];
+        for (let i = 0; i < maxRows; i++) {
+            const row: Record<string, string> = {};
+            orderedDayIndexes.forEach(dayIndex => {
+                const dayName = dayNames[dayIndex];
+                row[dayName] = dataByDay[dayName]?.[i] || "";
+            });
+            sheetData.push(row);
+        }
+        
+        const worksheet = XLSX.utils.json_to_sheet(sheetData, { header: dayNames.filter((_, i) => orderedDayIndexes.includes(i)) });
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Historial CURPs");
+
+        // Auto-size columns
+        worksheet["!cols"] = dayNames.map(() => ({ wch: 20 }));
+
+        XLSX.writeFile(workbook, "Historial_CURPs_SIST.xlsx");
+        toast({
+            title: "Descarga Iniciada",
+            description: "Tu historial de CURPs se está descargando.",
+        });
+    } catch(e) {
+        console.error("Failed to generate history Excel file", e);
+        toast({
+            title: "Error de Descarga",
+            description: "No se pudo generar el archivo de Excel.",
+            variant: "destructive"
+        });
+    }
+  }
   
   const todayIndex = new Date().getDay();
 
@@ -395,13 +487,13 @@ export default function ActaFusionClient() {
                           <CardTitle>Contador Diario de Trámites</CardTitle>
                       </div>
                       <div className="flex items-center space-x-1">
-                        <Button variant="outline" size="icon" onClick={handleDownloadStats}>
+                        <Button variant="outline" size="icon" onClick={handleDownloadStats} title="Descargar Reporte de Conteo">
                            <Download className="h-4 w-4" />
-                           <span className="sr-only">Descargar Reporte</span>
+                           <span className="sr-only">Descargar Reporte de Conteo</span>
                          </Button>
                         <Dialog open={isAdjustmentDialogOpen} onOpenChange={setIsAdjustmentDialogOpen}>
                           <DialogTrigger asChild>
-                            <Button variant="outline" size="icon">
+                            <Button variant="outline" size="icon" title="Ajuste Manual">
                                 <Pencil className="h-4 w-4" />
                                 <span className="sr-only">Ajuste Manual</span>
                               </Button>
@@ -455,7 +547,7 @@ export default function ActaFusionClient() {
                     {orderedDayIndexes.map(dayIndex => (
                         <Card key={dayIndex} className={cn("flex flex-col items-center justify-center p-4 text-center", dayIndex === todayIndex && "bg-primary/10 border-primary")}>
                            <p className={cn("font-semibold text-sm", dayIndex === todayIndex && "text-primary")}>{dayNames[dayIndex]}</p>
-                           <p className="text-3xl font-bold mt-2">{dailyStats[dayIndex]}</p>
+                           <p className="text-3xl font-bold mt-2">{dailyStats[dayIndex] || 0}</p>
                         </Card>
                     ))}
                 </CardContent>
@@ -484,11 +576,66 @@ export default function ActaFusionClient() {
                 </CardContent>
              </Card>
 
+            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 lg:col-span-2">
+                 <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                          <History className="h-6 w-6 text-primary"/>
+                          <CardTitle>Historial de Trámites de la Semana</CardTitle>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Select value={historyFilter} onValueChange={setHistoryFilter}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Filtrar por día..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todos los días</SelectItem>
+                                {orderedDayIndexes.map(dayIndex => (
+                                    <SelectItem key={dayIndex} value={dayIndex.toString()}>{dayNames[dayIndex]}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Button variant="outline" size="icon" onClick={handleDownloadHistory} title="Descargar Historial de CURPs">
+                           <Download className="h-4 w-4" />
+                           <span className="sr-only">Descargar Historial de CURPs</span>
+                         </Button>
+                      </div>
+                    </div>
+                    <CardDescription>
+                        Lista de todas las CURPs de los trámites que has realizado esta semana.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ScrollArea className="h-72 w-full rounded-md border">
+                        <Table>
+                            <TableHeader className="sticky top-0 bg-background">
+                                <TableRow>
+                                <TableHead className="w-[70%]">CURP</TableHead>
+                                <TableHead>Día</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredHistory.length > 0 ? (
+                                    filteredHistory.map((item, index) => (
+                                        <TableRow key={`${item.curp}-${index}`}>
+                                        <TableCell className="font-mono">{item.curp}</TableCell>
+                                        <TableCell>{item.day}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={2} className="h-24 text-center text-muted-foreground">
+                                            No hay trámites para mostrar.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
+                </CardContent>
+            </Card>
+
         </div>
     </main>
   );
 }
-
-
-    
-    

@@ -63,6 +63,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('dailyFusionStats');
         localStorage.removeItem('weeklyGoal');
         localStorage.removeItem('isGoalLocked');
+        localStorage.removeItem('curpHistory');
     } catch (error) {
         console.error("Error signing out: ", error);
     }
@@ -82,5 +83,3 @@ export function useAuth() {
   }
   return context;
 }
-
-    

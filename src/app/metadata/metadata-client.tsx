@@ -12,6 +12,11 @@ import { modifyMetadataAndResizeClient } from '@/lib/pdf-utils';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
+interface DailyStats {
+  weekNumber: number;
+  counts: number[];
+}
+
 // Helper to get the ISO week number
 const getWeekNumber = (d: Date): number => {
   d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -90,15 +95,15 @@ export default function MetadataClient() {
     if (!modifiedPdfUrl) return;
 
     try {
-      const currentFusionCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
-      localStorage.setItem('fusionCount', (currentFusionCount + 1).toString());
-
       const today = new Date();
       const currentWeek = getWeekNumber(today);
       const dayIndex = today.getDay();
+      
+      const currentFusionCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
+      localStorage.setItem('fusionCount', (currentFusionCount + 1).toString());
 
       const storedStatsRaw = localStorage.getItem('dailyFusionStats');
-      let dailyStats = { weekNumber: currentWeek, counts: Array(7).fill(0) };
+      let dailyStats: DailyStats = { weekNumber: currentWeek, counts: Array(7).fill(0) };
 
       if (storedStatsRaw) {
           try {
@@ -109,8 +114,10 @@ export default function MetadataClient() {
           } catch (e) { console.error(e); }
       }
 
-      dailyStats.counts[dayIndex]++;
+      dailyStats.counts[dayIndex] = (dailyStats.counts[dayIndex] || 0) + 1;
       localStorage.setItem('dailyFusionStats', JSON.stringify(dailyStats));
+      
+      // Note: We don't save CURP history here as we don't extract it.
 
       const link = document.createElement('a');
       link.href = modifiedPdfUrl;
@@ -276,5 +283,3 @@ export default function MetadataClient() {
     </main>
   );
 }
-
-    

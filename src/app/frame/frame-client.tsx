@@ -18,6 +18,16 @@ import { Label } from '@/components/ui/label';
 type Status = 'idle' | 'loading' | 'success' | 'error';
 type LoadingStep = 'idle' | 'finding_frame' | 'framing' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'foliating' | 'done';
 
+interface DailyStats {
+  weekNumber: number;
+  counts: number[];
+}
+
+interface CurpHistory {
+  weekNumber: number;
+  history: Record<number, string[]>;
+}
+
 const loadingMessages: Record<LoadingStep, string> = {
   idle: 'Esperando para empezar...',
   finding_frame: 'Buscando el marco en tu base de datos...',
@@ -130,14 +140,15 @@ export default function FrameClient() {
     if (!finalPdfUrl) return;
 
     try {
-      const currentFusionCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
-      localStorage.setItem('fusionCount', (currentFusionCount + 1).toString());
-      
       const today = new Date();
       const currentWeek = getWeekNumber(today);
       const dayIndex = today.getDay();
+
+      const currentFusionCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
+      localStorage.setItem('fusionCount', (currentFusionCount + 1).toString());
+      
       const storedStatsRaw = localStorage.getItem('dailyFusionStats');
-      let dailyStats = { weekNumber: currentWeek, counts: Array(7).fill(0) };
+      let dailyStats: DailyStats = { weekNumber: currentWeek, counts: Array(7).fill(0) };
       if (storedStatsRaw) {
           try {
               const parsed = JSON.parse(storedStatsRaw);
@@ -146,8 +157,24 @@ export default function FrameClient() {
               }
           } catch (e) { console.error(e); }
       }
-      dailyStats.counts[dayIndex]++;
+      dailyStats.counts[dayIndex] = (dailyStats.counts[dayIndex] || 0) + 1;
       localStorage.setItem('dailyFusionStats', JSON.stringify(dailyStats));
+      
+      if (extractedCurp) {
+        const storedHistoryRaw = localStorage.getItem('curpHistory');
+        let curpHistory: CurpHistory = { weekNumber: currentWeek, history: {} };
+        if (storedHistoryRaw) {
+            try {
+                const parsed = JSON.parse(storedHistoryRaw);
+                if (parsed.weekNumber === currentWeek) curpHistory = parsed;
+            } catch(e) { console.error(e); }
+        }
+        if (!curpHistory.history[dayIndex]) {
+            curpHistory.history[dayIndex] = [];
+        }
+        curpHistory.history[dayIndex].push(extractedCurp);
+        localStorage.setItem('curpHistory', JSON.stringify(curpHistory));
+      }
 
       const link = document.createElement('a');
       link.href = finalPdfUrl;

@@ -46,6 +46,17 @@ interface OcrQueueItem {
 
 type OperationMode = 'manual' | 'automated';
 
+// --- LocalStorage Types ---
+interface DailyStats {
+  weekNumber: number;
+  counts: number[];
+}
+
+interface CurpHistory {
+  weekNumber: number;
+  history: Record<number, string[]>;
+}
+
 // Helper to get the ISO week number
 const getWeekNumber = (d: Date): number => {
   d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -118,22 +129,43 @@ export default function BulkFusionClient() {
   }, [activeFile]);
 
   // --- Shared Functions ---
-  const incrementCounters = () => {
-    const currentFusionCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
-    localStorage.setItem('fusionCount', (currentFusionCount + 1).toString());
+  const incrementCounters = (curp: string | null) => {
     const today = new Date();
     const currentWeek = getWeekNumber(today);
     const dayIndex = today.getDay();
+
+    // Increment count
+    const currentFusionCount = parseInt(localStorage.getItem('fusionCount') || '0', 10);
+    localStorage.setItem('fusionCount', (currentFusionCount + 1).toString());
+
+    // Increment daily stats
     const storedStatsRaw = localStorage.getItem('dailyFusionStats');
-    let dailyStats = { weekNumber: currentWeek, counts: Array(7).fill(0) };
+    let dailyStats: DailyStats = { weekNumber: currentWeek, counts: Array(7).fill(0) };
     if (storedStatsRaw) {
         try {
             const parsed = JSON.parse(storedStatsRaw);
             if (parsed.weekNumber === currentWeek) dailyStats = parsed;
         } catch (e) { console.error(e); }
     }
-    dailyStats.counts[dayIndex]++;
+    dailyStats.counts[dayIndex] = (dailyStats.counts[dayIndex] || 0) + 1;
     localStorage.setItem('dailyFusionStats', JSON.stringify(dailyStats));
+    
+    // Add CURP to history
+    if (curp) {
+        const storedHistoryRaw = localStorage.getItem('curpHistory');
+        let curpHistory: CurpHistory = { weekNumber: currentWeek, history: {} };
+        if (storedHistoryRaw) {
+            try {
+                const parsed = JSON.parse(storedHistoryRaw);
+                if (parsed.weekNumber === currentWeek) curpHistory = parsed;
+            } catch(e) { console.error(e); }
+        }
+        if (!curpHistory.history[dayIndex]) {
+            curpHistory.history[dayIndex] = [];
+        }
+        curpHistory.history[dayIndex].push(curp);
+        localStorage.setItem('curpHistory', JSON.stringify(curpHistory));
+    }
   }
   
   const downloadFile = (url: string, name: string) => {
@@ -227,7 +259,7 @@ export default function BulkFusionClient() {
         const reversePdfDataUri = await getReversePdfAsDataUri(reverseSideEntry['link del reverso para descarga directa']);
         const modifiedReversePdfUri = await modifyReversePdfClient(reversePdfDataUri, curp, electronicId);
         const finalPdf = await mergePdfsClient(fileDataUri, modifiedReversePdfUri);
-        incrementCounters();
+        incrementCounters(curp);
         const result = { ...item, status: 'success' as const, resultUrl: finalPdf, curp };
         setManualQueue(prev => prev.map(i => i.id === result.id ? result : i));
         successfulDownloads.push({ url: finalPdf, name: `${curp}_SIST.pdf` });
@@ -300,7 +332,7 @@ export default function BulkFusionClient() {
             const modifiedReversePdfUri = await modifyReversePdfClient(reversePdfDataUri, item.curp, item.electronicId);
             const finalPdf = await mergePdfsClient(fileDataUri, modifiedReversePdfUri);
             
-            incrementCounters();
+            incrementCounters(item.curp);
             
             const result = { ...item, status: 'done' as const, resultUrl: finalPdf };
             setOcrQueue(prev => prev.map(i => i.id === item.id ? result : i));
@@ -530,6 +562,3 @@ export default function BulkFusionClient() {
     </main>
   );
 }
-
-    
-    
