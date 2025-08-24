@@ -24,31 +24,48 @@ async function dataUriToArrayBuffer(dataUri: string): Promise<ArrayBuffer> {
  * @returns An object containing the extracted data.
  */
 async function extractFieldsFromText(text: string): Promise<ExtractedData> {
-    // Regex for CURP (standard format)
     const curpRegex = /([A-Z][AEIOUX][A-Z]{2}\d{6}[HM][A-Z]{5}[A-Z\d]\d)/;
-    
-    // Regex for Electronic ID: Looks for the label (with variations) and captures the following number sequence.
-    // \s* handles any spaces or newlines between the label and the number.
-    const idRegex = /Identificador\s+Electrónico\s*([0-9]+)/i;
-
-    // Regex for Issuing Entity: Looks for the label, skips any junk text in between (like "Acta de Nacimiento"), 
-    // and captures the state name in caps.
-    const entidadRegex = /Entidad\s+de\s+Registro\s*(?:Acta\s+de\s+Nacimiento)?\s*([A-ZÁÉÍÓÚÑ\s]+?)(?=\s{2,}|\n|DATOS)/i;
-    
     const curpMatch = text.match(curpRegex);
-    const idMatch = text.match(idRegex);
-    let entidadMatch = text.match(entidadRegex);
 
-    // Fallback for entity if the main regex fails, for cases where the structure is different
-    if (!entidadMatch) {
-       const entidadFallbackRegex = /DATOS\s+DE\s+LA\s+ENTIDAD\s+FEDERATIVA\s*([A-Z\s]+?)\s*(?:DATOS DEL ACTA|Fecha de registro)/i;
-       entidadMatch = text.match(entidadFallbackRegex);
+    let electronicId: string | null = null;
+    let issuingEntity: string | null = null;
+
+    // Determine document type
+    const isDeathCertificate = /acta\s+de\s+defunci[oó]n/i.test(text);
+
+    if (isDeathCertificate) {
+        // --- Logic for Death Certificates ---
+        const idRegexDefuncion = /Identificador\s+Electrónico\s*([0-9]{20,})/;
+        const entidadRegexDefuncion = /Entidad\s+de\s+Registro\s*([A-ZÁÉÍÓÚÑ\s]+?)(?=DATOS\s+DE\s+LA\s+PERSONA\s+FINADA)/i;
+
+        const idMatch = text.match(idRegexDefuncion);
+        const entidadMatch = text.match(entidadRegexDefuncion);
+
+        electronicId = idMatch ? idMatch[1] : null;
+        issuingEntity = entidadMatch ? entidadMatch[1].trim().replace(/(\r\n|\n|\r)/gm,"") : null;
+
+    } else {
+        // --- Default Logic for Birth Certificates ---
+        const idRegexNacimiento = /Identificador\s+Electrónico\s*([0-9]+)/i;
+        const entidadRegexNacimiento = /Entidad\s+de\s+Registro\s*(?:Acta\s+de\s+Nacimiento)?\s*([A-ZÁÉÍÓÚÑ\s]+?)(?=\s{2,}|\n|DATOS)/i;
+        
+        const idMatch = text.match(idRegexNacimiento);
+        let entidadMatch = text.match(entidadRegexNacimiento);
+        
+        electronicId = idMatch ? idMatch[1] : null;
+        
+        // Fallback for entity if the main regex fails
+        if (!entidadMatch) {
+           const entidadFallbackRegex = /DATOS\s+DE\s+LA\s+ENTIDAD\s+FEDERATIVA\s*([A-Z\s]+?)\s*(?:DATOS DEL ACTA|Fecha de registro)/i;
+           entidadMatch = text.match(entidadFallbackRegex);
+        }
+        issuingEntity = entidadMatch ? entidadMatch[1].trim().replace(/(\r\n|\n|\r)/gm,"") : null;
     }
     
     return {
         curp: curpMatch ? curpMatch[1] : null,
-        electronicId: idMatch ? idMatch[1] : null,
-        issuingEntity: entidadMatch ? entidadMatch[1].trim().replace(/(\r\n|\n|\r)/gm,"") : null
+        electronicId: electronicId,
+        issuingEntity: issuingEntity
     };
 }
 
@@ -89,5 +106,3 @@ export async function extractDataFromPdf(pdfDataUri: string, logFullText = false
         throw new Error("No se pudo procesar el PDF. El archivo puede estar dañado o en un formato no compatible.");
     }
 }
-
-    
