@@ -1,3 +1,4 @@
+
 // src/lib/ocr-utils.ts
 "use client";
 
@@ -11,6 +12,11 @@ interface ExtractedData {
   curp: string | null;
   electronicId: string | null;
   issuingEntity: string | null;
+}
+
+interface OcrResult {
+  extractedData: ExtractedData;
+  rawText: string;
 }
 
 async function dataUriToArrayBuffer(dataUri: string): Promise<ArrayBuffer> {
@@ -74,9 +80,9 @@ async function extractFieldsFromText(text: string): Promise<ExtractedData> {
  * Main function to process a PDF Data URI, extract text, and then extract specific fields.
  * @param pdfDataUri The PDF file encoded as a a data URI.
  * @param logFullText If true, logs the full extracted text to the console for debugging.
- * @returns A promise that resolves to an object with the extracted data.
+ * @returns A promise that resolves to an object with the extracted data and the raw text.
  */
-export async function extractDataFromPdf(pdfDataUri: string, logFullText = false): Promise<ExtractedData> {
+export async function extractDataFromPdf(pdfDataUri: string, logFullText = false): Promise<OcrResult> {
     try {
         const arrayBuffer = await dataUriToArrayBuffer(pdfDataUri);
         const typedarray = new Uint8Array(arrayBuffer);
@@ -99,7 +105,10 @@ export async function extractDataFromPdf(pdfDataUri: string, logFullText = false
         
         const data = await extractFieldsFromText(fullText);
 
-        return data;
+        return {
+            extractedData: data,
+            rawText: fullText
+        };
 
     } catch (e) {
         console.error("Failed to process PDF for OCR", e);

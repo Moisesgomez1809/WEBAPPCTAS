@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -24,6 +25,7 @@ export default function DevelopOcrClient() {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
+  const [rawText, setRawText] = useState<string>('');
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
   
@@ -32,6 +34,7 @@ export default function DevelopOcrClient() {
     setOriginalFile(null);
     setPreviewUrl(null);
     setExtractedData(null);
+    setRawText('');
     setStatus('idle');
     setError(null);
   }, [previewUrl]);
@@ -54,19 +57,21 @@ export default function DevelopOcrClient() {
     setStatus('loading');
     setError(null);
     setExtractedData(null);
+    setRawText('');
 
     try {
         const fileReader = new FileReader();
         fileReader.onload = async (e) => {
             if (e.target?.result) {
                 const dataUri = e.target.result as string;
-                const data = await extractDataFromPdf(dataUri, true); // Pass true to enable console logging
+                const { extractedData: data, rawText: fullText } = await extractDataFromPdf(dataUri, true);
                 
                 if (!data.curp && !data.electronicId && !data.issuingEntity) {
                    throw new Error("No se pudo extraer ninguna información útil. Asegúrate de que el documento sea legible y contenga los datos esperados.");
                 }
 
                 setExtractedData(data);
+                setRawText(fullText);
                 setStatus('success');
                 toast({ title: '¡Éxito!', description: 'Se han extraído los datos del PDF.' });
             } else {
@@ -164,6 +169,27 @@ export default function DevelopOcrClient() {
             </Button>
           </CardFooter>
         </Card>
+
+        {rawText && (
+             <Card>
+                <CardHeader>
+                    <CardTitle>Texto Completo Extraído (Debug)</CardTitle>
+                    <CardDescription>
+                    Este es el texto crudo que el OCR extrajo del PDF. Úsalo para depurar.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ScrollArea className="h-72 w-full rounded-md border">
+                        <Textarea
+                            readOnly
+                            value={rawText}
+                            className="h-full w-full p-4 font-mono text-xs"
+                            placeholder="El texto extraído aparecerá aquí..."
+                        />
+                    </ScrollArea>
+                </CardContent>
+            </Card>
+        )}
     </div>
   );
 
