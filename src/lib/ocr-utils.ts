@@ -1,4 +1,3 @@
-
 // src/lib/ocr-utils.ts
 "use client";
 
@@ -40,15 +39,17 @@ async function extractFieldsFromText(text: string): Promise<ExtractedData> {
     const isDeathCertificate = /acta\s+de\s+defunci[oó]n/i.test(text);
 
     if (isDeathCertificate) {
-        // --- Logic for Death Certificates ---
-        const idRegexDefuncion = /Identificador\s+Electrónico\s*([0-9]{20,})/;
-        const entidadRegexDefuncion = /Entidad\s+de\s+Registro\s*([A-ZÁÉÍÓÚÑ\s]+?)(?=DATOS\s+DE\s+LA\s+PERSONA\s+FINADA)/i;
+        // --- Logic for Death Certificates based on user feedback ---
+        // Looks for a long number followed by the label "Identificador Electrónico"
+        const idRegexDefuncion = /([0-9]{20,})\s*Identificador\s+Electrónico/;
+        // Looks for a state name in uppercase right before "Entidad de Registro"
+        const entidadRegexDefuncion = /([A-ZÁÉÍÓÚÑ\s]+)\s+Entidad\s+de\s+Registro/i;
 
         const idMatch = text.match(idRegexDefuncion);
         const entidadMatch = text.match(entidadRegexDefuncion);
 
-        electronicId = idMatch ? idMatch[1] : null;
-        issuingEntity = entidadMatch ? entidadMatch[1].trim().replace(/(\r\n|\n|\r)/gm,"") : null;
+        electronicId = idMatch ? idMatch[1].trim() : null;
+        issuingEntity = entidadMatch ? entidadMatch[1].trim().replace(/N°\s+de\s+Certificado\s+de\s+Defunción\s+de\s+la\s+SSA/i, '').trim() : null;
 
     } else {
         // --- Default Logic for Birth Certificates ---
