@@ -153,8 +153,8 @@ export default function DashboardClient() {
   }, [previewUrl]);
 
   // Combined processFusion logic for both OCR and Manual modes
-  const processFusion = async (entityToUse: string | null, details?: { curp: string | null; electronicId: string | null; }) => {
-    if (!originalPdfUrl) {
+  const processFusion = async (entityToUse: string | null, pdfUri: string, details?: { curp: string | null; electronicId: string | null; }) => {
+    if (!pdfUri) {
       toast({ title: "No hay archivo cargado", variant: "destructive" });
       return;
     }
@@ -172,13 +172,13 @@ export default function DashboardClient() {
       let curp: string | null = null;
       let electronicId: string | null = null;
 
-      if (details) {
+      if (details?.curp && details?.electronicId) {
         setLoadingStep('matching'); // Skip extraction step visually if details are pre-filled
         curp = details.curp;
         electronicId = details.electronicId;
       } else {
         setLoadingStep('extractingDetails');
-        const extractedDetails = await extractDocumentDetails({ pdfDataUri: originalPdfUrl });
+        const extractedDetails = await extractDocumentDetails({ pdfDataUri: pdfUri });
         curp = extractedDetails.curp;
         electronicId = extractedDetails.electronicId;
       }
@@ -204,7 +204,7 @@ export default function DashboardClient() {
       const modifiedReversePdfUri = await modifyReversePdfClient(reversePdfDataUri, curp, electronicId);
 
       setLoadingStep('merging');
-      let finalPdf = await mergePdfsClient(originalPdfUrl, modifiedReversePdfUri);
+      let finalPdf = await mergePdfsClient(pdfUri, modifiedReversePdfUri);
 
       if (addFolio) {
         setLoadingStep('foliating');
@@ -244,7 +244,7 @@ export default function DashboardClient() {
       setOcrStatus('success');
 
       // Automatically trigger fusion process
-      await processFusion(extractedData.issuingEntity, { curp: extractedData.curp, electronicId: extractedData.electronicId });
+      await processFusion(extractedData.issuingEntity, dataUri, { curp: extractedData.curp, electronicId: extractedData.electronicId });
       
     } catch (e: any) {
         setOcrStatus('error');
@@ -254,7 +254,7 @@ export default function DashboardClient() {
     }
   };
 
-  const handleFileChange = (file: File | null) => {
+  const handleFileChange = async (file: File | null) => {
     if (file && file.type === 'application/pdf') {
       handleReset();
       setOriginalFile(file);
@@ -262,15 +262,24 @@ export default function DashboardClient() {
       const objectUrl = URL.createObjectURL(file);
       setPreviewUrl(objectUrl);
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUri = e.target?.result as string;
+      try {
+        const dataUri = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.onerror = (e) => reject(new Error("Error al leer el archivo."));
+            reader.readAsDataURL(file);
+        });
+
         setOriginalPdfUrl(dataUri);
+        
         if (mode === 'ocr') {
-            handleOcrProcess(dataUri);
+            await handleOcrProcess(dataUri);
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+         setError('No se pudo leer el archivo PDF.');
+         toast({ title: "Error de Lectura", description: 'No se pudo procesar el archivo seleccionado.', variant: "destructive" });
+      }
+
       setError(null);
     } else {
       setError('Por favor, sube un archivo PDF válido.');
@@ -413,8 +422,8 @@ export default function DashboardClient() {
             </SelectContent>
             </Select>
             
-            <Button onClick={() => processFusion(manualEntity)} disabled={!manualEntity} className="w-full">
-            <Sparkles className="mr-2 h-4 w-4" /> Fusionar Documentos
+            <Button onClick={() => originalPdfUrl && processFusion(manualEntity, originalPdfUrl)} disabled={!manualEntity || !originalPdfUrl} className="w-full">
+                <Sparkles className="mr-2 h-4 w-4" /> Fusionar Documentos
             </Button>
         </div>
      )
@@ -547,3 +556,6 @@ export default function DashboardClient() {
   );
 }
 
+
+
+    
