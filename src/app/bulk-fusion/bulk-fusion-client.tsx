@@ -290,11 +290,11 @@ export default function BulkFusionClient() {
                 reader.onerror = e => reject(e);
                 reader.readAsDataURL(item.file);
             });
-            const data = await extractDataFromPdf(fileDataUri);
-            if (!data.curp || !data.electronicId || !data.issuingEntity) {
+            const { extractedData } = await extractDataFromPdf(fileDataUri);
+            if (!extractedData.curp || !extractedData.electronicId || !extractedData.issuingEntity) {
                 throw new Error("Datos clave no encontrados.");
             }
-            setOcrQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'success', ...data } : i));
+            setOcrQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'success', ...extractedData } : i));
         } catch (e: any) {
             const error = e instanceof Error ? e.message : 'Error desconocido.';
             setOcrQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'error', error } : i));

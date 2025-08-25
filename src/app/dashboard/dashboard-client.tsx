@@ -45,7 +45,7 @@ const loadingMessages: Record<LoadingStep, string> = {
   matching: 'Buscando el reverso correcto en tu base de datos...',
   modifying: 'Reemplazando el código QR en el reverso...',
   merging: 'Fusionando los documentos en un solo PDF...',
-  foliating: 'Añadiendo el folio y código de barras...',
+  foliating: 'Añadiendo el folio...',
   done: '¡Tu documento está listo!',
 };
 
@@ -184,16 +184,16 @@ export default function DashboardClient() {
     setOcrStatus('processing');
     setOcrData({ curp: '', electronicId: '', issuingEntity: ''});
     try {
-      const data = await extractDataFromPdf(dataUri);
+      const { extractedData } = await extractDataFromPdf(dataUri);
       setOcrData({
-        curp: data.curp || '',
-        electronicId: data.electronicId || '',
-        issuingEntity: data.issuingEntity || ''
+        curp: extractedData.curp || '',
+        electronicId: extractedData.electronicId || '',
+        issuingEntity: extractedData.issuingEntity || ''
       });
       setOcrStatus('success');
 
-      if (!data.curp && !data.electronicId && !data.issuingEntity) {
-        toast({ title: "OCR Sin Resultados", description: "No se encontró información clave. Puedes llenarla manualmente.", variant: "destructive" });
+      if (!extractedData.curp && !extractedData.electronicId && !extractedData.issuingEntity) {
+        toast({ title: "OCR Sin Resultados", description: "No se encontró información clave. Puedes llenarla manually.", variant: "destructive" });
       } else {
         toast({ title: "OCR Completado", description: "Verifica y corrige los datos si es necesario." });
       }
