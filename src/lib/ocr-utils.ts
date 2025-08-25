@@ -40,16 +40,16 @@ async function extractFieldsFromText(text: string): Promise<ExtractedData> {
 
     if (isDeathCertificate) {
         // --- Logic for Death Certificates based on user feedback ---
-        // Looks for a long number followed by the label "Identificador Electrónico"
         const idRegexDefuncion = /([0-9]{20,})\s*Identificador\s+Electrónico/;
-        // Looks for a state name in uppercase right before "Entidad de Registro"
-        const entidadRegexDefuncion = /([A-ZÁÉÍÓÚÑ\s]+)\s+Entidad\s+de\s+Registro/i;
+        // Improved regex to capture only the last uppercase word(s) before "Entidad de Registro"
+        const entidadRegexDefuncion = /(?:[A-ZÁÉÍÓÚÑ\s]+de\sla\sSSA\s)?([A-ZÁÉÍÓÚÑ]+)\s+Entidad\s+de\s+Registro/i;
 
         const idMatch = text.match(idRegexDefuncion);
         const entidadMatch = text.match(entidadRegexDefuncion);
 
         electronicId = idMatch ? idMatch[1].trim() : null;
-        issuingEntity = entidadMatch ? entidadMatch[1].trim().replace(/N°\s+de\s+Certificado\s+de\s+Defunción\s+de\s+la\s+SSA/i, '').trim() : null;
+        issuingEntity = entidadMatch ? entidadMatch[1].trim() : null;
+        
 
     } else {
         // --- Default Logic for Birth Certificates ---
