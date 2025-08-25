@@ -23,9 +23,9 @@ type OcrStatus = 'idle' | 'processing' | 'success' | 'error';
 type OperationMode = 'manual' | 'ocr';
 
 interface OcrData {
-  curp: string;
-  electronicId: string;
-  issuingEntity: string;
+  curp: string | null;
+  electronicId: string | null;
+  issuingEntity: string | null;
 }
 
 // --- LocalStorage Types ---
@@ -152,6 +152,108 @@ export default function DashboardClient() {
     setOcrData({ curp: '', electronicId: '', issuingEntity: ''});
   }, [previewUrl]);
 
+  // Combined processFusion logic for both OCR and Manual modes
+  const processFusion = async (entityToUse: string | null, details?: { curp: string | null; electronicId: string | null; }) => {
+    if (!originalPdfUrl) {
+      toast({ title: "No hay archivo cargado", variant: "destructive" });
+      return;
+    }
+     if (!entityToUse) {
+      toast({ title: "Entidad no especificada", description: "Se requiere una entidad de registro para continuar.", variant: "destructive" });
+      return;
+    }
+
+    setStatus('loading');
+    setError(null);
+    setEntity(null);
+    setExtractedCurp(null);
+    
+    try {
+      let curp: string | null = null;
+      let electronicId: string | null = null;
+
+      if (details) {
+        setLoadingStep('matching'); // Skip extraction step visually if details are pre-filled
+        curp = details.curp;
+        electronicId = details.electronicId;
+      } else {
+        setLoadingStep('extractingDetails');
+        const extractedDetails = await extractDocumentDetails({ pdfDataUri: originalPdfUrl });
+        curp = extractedDetails.curp;
+        electronicId = extractedDetails.electronicId;
+      }
+      
+      if (!curp || !electronicId) {
+          throw new Error("No se pudo extraer la CURP o el Identificador Electrónico. Asegúrate de que el documento sea claro.");
+      }
+      
+      setExtractedCurp(curp);
+      setEntity(entityToUse);
+      
+      if(loadingStep !== 'matching') setLoadingStep('matching');
+      
+      const reverseSideEntry = findReverseSide(entityToUse, db);
+      if (!reverseSideEntry) {
+          throw new Error(`No se pudo encontrar un reverso para "${entityToUse}" en tu base de datos.`);
+      }
+
+      const reverseSideUrl = reverseSideEntry['link del reverso para descarga directa'];
+      const reversePdfDataUri = await getReversePdfAsDataUri(reverseSideUrl);
+
+      setLoadingStep('modifying');
+      const modifiedReversePdfUri = await modifyReversePdfClient(reversePdfDataUri, curp, electronicId);
+
+      setLoadingStep('merging');
+      let finalPdf = await mergePdfsClient(originalPdfUrl, modifiedReversePdfUri);
+
+      if (addFolio) {
+        setLoadingStep('foliating');
+        finalPdf = await addFolioToPdfClient(finalPdf);
+      }
+
+      handleProcessSuccess(finalPdf, curp);
+
+    } catch (e: any) {
+      console.error(e);
+      const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
+      setError(`El proceso falló: ${errorMessage}`);
+      setStatus('error');
+      toast({
+        title: "El Proceso Falló",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    }
+  };
+
+
+   const handleOcrProcess = async (dataUri: string) => {
+    setOcrStatus('processing');
+    setLoadingStep('extractingDetails'); // Visual feedback for user
+    setStatus('loading');
+    setError(null);
+    
+    try {
+      const { extractedData } = await extractDataFromPdf(dataUri);
+      
+      if (!extractedData.curp || !extractedData.electronicId || !extractedData.issuingEntity) {
+        throw new Error("El OCR no pudo encontrar todos los datos necesarios. Inténtalo en modo Manual.");
+      }
+      
+      setOcrData(extractedData as OcrData);
+      setOcrStatus('success');
+
+      // Automatically trigger fusion process
+      await processFusion(extractedData.issuingEntity, { curp: extractedData.curp, electronicId: extractedData.electronicId });
+      
+    } catch (e: any) {
+        setOcrStatus('error');
+        setError(e.message || "Falló el proceso de OCR.");
+        setStatus('error');
+        toast({ title: 'Error de OCR', description: e.message, variant: 'destructive' });
+    }
+  };
+
   const handleFileChange = (file: File | null) => {
     if (file && file.type === 'application/pdf') {
       handleReset();
@@ -178,35 +280,6 @@ export default function DashboardClient() {
         variant: "destructive",
       })
     }
-  };
-
-   const handleOcrProcess = async (dataUri: string) => {
-    setOcrStatus('processing');
-    setOcrData({ curp: '', electronicId: '', issuingEntity: ''});
-    try {
-      const { extractedData } = await extractDataFromPdf(dataUri);
-      setOcrData({
-        curp: extractedData.curp || '',
-        electronicId: extractedData.electronicId || '',
-        issuingEntity: extractedData.issuingEntity || ''
-      });
-      setOcrStatus('success');
-
-      if (!extractedData.curp && !extractedData.electronicId && !extractedData.issuingEntity) {
-        toast({ title: "OCR Sin Resultados", description: "No se encontró información clave. Puedes llenarla manually.", variant: "destructive" });
-      } else {
-        toast({ title: "OCR Completado", description: "Verifica y corrige los datos si es necesario." });
-      }
-      
-    } catch (e: any) {
-        setOcrStatus('error');
-        setError(e.message || "Falló el proceso de OCR.");
-        toast({ title: 'Error de OCR', description: e.message, variant: 'destructive' });
-    }
-  };
-
-  const handleOcrDataChange = (field: keyof OcrData, value: string) => {
-    setOcrData(prev => ({ ...prev, [field]: value }));
   };
 
   
@@ -301,80 +374,6 @@ export default function DashboardClient() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addFolio]);
 
-
-  const processFusion = async (entityToUse: string | null, localOcrData: OcrData | null = null) => {
-    if (!originalPdfUrl || !entityToUse) {
-       toast({
-        title: "Selección Requerida",
-        description: "Por favor, selecciona un estado o usa el modo OCR.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setStatus('loading');
-    setError(null);
-    setEntity(null);
-    setExtractedCurp(null);
-    
-    try {
-      let curp: string | null = null;
-      let electronicId: string | null = null;
-
-      if (mode === 'ocr' && localOcrData) {
-        setLoadingStep('matching'); // Skip extraction step visually
-        curp = localOcrData.curp;
-        electronicId = localOcrData.electronicId;
-      } else {
-        setLoadingStep('extractingDetails');
-        const details = await extractDocumentDetails({ pdfDataUri: originalPdfUrl });
-        curp = details.curp;
-        electronicId = details.electronicId;
-      }
-      
-      if (!curp || !electronicId) {
-          throw new Error("No se pudo extraer la CURP o el Identificador Electrónico. Asegúrate de que el documento sea claro y los datos correctos.");
-      }
-      
-      setExtractedCurp(curp);
-      setEntity(entityToUse);
-      
-      if(loadingStep !== 'matching') setLoadingStep('matching');
-      
-      const reverseSideEntry = findReverseSide(entityToUse, db);
-      if (!reverseSideEntry) {
-          throw new Error(`No se pudo encontrar un reverso para "${entityToUse}" en tu base de datos.`);
-      }
-
-      const reverseSideUrl = reverseSideEntry['link del reverso para descarga directa'];
-      const reversePdfDataUri = await getReversePdfAsDataUri(reverseSideUrl);
-
-      setLoadingStep('modifying');
-      const modifiedReversePdfUri = await modifyReversePdfClient(reversePdfDataUri, curp, electronicId);
-
-      setLoadingStep('merging');
-      let finalPdf = await mergePdfsClient(originalPdfUrl, modifiedReversePdfUri);
-
-      if (addFolio) {
-        setLoadingStep('foliating');
-        finalPdf = await addFolioToPdfClient(finalPdf);
-      }
-
-      handleProcessSuccess(finalPdf, curp);
-
-    } catch (e: any) {
-      console.error(e);
-      const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-      setError(`El proceso falló: ${errorMessage}`);
-      setStatus('error');
-      toast({
-        title: "El Proceso Falló",
-        description: errorMessage,
-        variant: "destructive",
-      })
-    }
-  };
-
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); };
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); };
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); };
@@ -399,52 +398,6 @@ export default function DashboardClient() {
     </div>
   );
   
-  const renderOcrResults = () => {
-    if (mode !== 'ocr' || !originalFile) return null;
-    
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Resultados del OCR</CardTitle>
-                <CardDescription>Verifica y corrige los datos extraídos antes de fusionar.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                {ocrStatus === 'processing' && (
-                    <div className="flex items-center justify-center space-x-2 p-4">
-                        <Loader2 className="w-6 h-6 text-primary animate-spin" />
-                        <p className="text-muted-foreground">Escaneando documento...</p>
-                    </div>
-                )}
-                {ocrStatus === 'success' && (
-                     <div className="space-y-4">
-                        <div>
-                            <Label htmlFor="ocr-curp">CURP</Label>
-                            <Input id="ocr-curp" value={ocrData.curp} onChange={(e) => handleOcrDataChange('curp', e.target.value)} placeholder="CURP no encontrada" />
-                        </div>
-                         <div>
-                            <Label htmlFor="ocr-id">ID Electrónico</Label>
-                            <Input id="ocr-id" value={ocrData.electronicId} onChange={(e) => handleOcrDataChange('electronicId', e.target.value)} placeholder="ID no encontrado" />
-                        </div>
-                        <div>
-                            <Label htmlFor="ocr-entity">Entidad de Registro</Label>
-                             <Input id="ocr-entity" value={ocrData.issuingEntity} onChange={(e) => handleOcrDataChange('issuingEntity', e.target.value)} placeholder="Entidad no encontrada" />
-                        </div>
-                    </div>
-                )}
-                {ocrStatus === 'error' && <p className="text-destructive">Falló el OCR. Intenta en modo manual.</p>}
-            </CardContent>
-            {ocrStatus === 'success' && (
-                <CardFooter>
-                     <Button onClick={() => processFusion(ocrData.issuingEntity, ocrData)} disabled={!ocrData.issuingEntity || !ocrData.curp || !ocrData.electronicId || status === 'loading'} className="w-full">
-                        {status === 'loading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                         Validar y Fusionar
-                    </Button>
-                </CardFooter>
-            )}
-        </Card>
-    );
-  };
-
   const renderManualMode = () => {
      if (mode !== 'manual' || !originalFile || status === 'loading' || status === 'success') return null;
 
@@ -545,7 +498,7 @@ export default function DashboardClient() {
                 </CardContent>
             </Card>
 
-            {originalFile ? (status === 'idle' ? (mode === 'ocr' ? renderOcrResults() : renderManualMode()) : renderProcessingState()) : renderDropzone()}
+            {originalFile ? renderProcessingState() : renderDropzone()}
 
             {error && (
             <Alert variant="destructive">
@@ -593,3 +546,4 @@ export default function DashboardClient() {
     </main>
   );
 }
+
