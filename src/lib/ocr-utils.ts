@@ -1,3 +1,4 @@
+
 // src/lib/ocr-utils.ts
 "use client";
 
@@ -41,8 +42,9 @@ async function extractFieldsFromText(text: string): Promise<ExtractedData> {
     if (isDeathCertificate) {
         // --- Logic for Death Certificates based on user feedback ---
         const idRegexDefuncion = /([0-9]{20,})\s*Identificador\s+Electrónico/;
-        // Improved regex to capture only the last uppercase word(s) before "Entidad de Registro"
-        const entidadRegexDefuncion = /(?:[A-ZÁÉÍÓÚÑ\s]+de\sla\sSSA\s)?([A-ZÁÉÍÓÚÑ]+)\s+Entidad\s+de\s+Registro/i;
+        // Improved regex to capture multi-word uppercase entities before "Entidad de Registro"
+        const entidadRegexDefuncion = /([A-ZÁÉÍÓÚÑ]+(?:\s[A-ZÁÉÍÓÚÑ]+)*)\s+Entidad\s+de\s+Registro/i;
+
 
         const idMatch = text.match(idRegexDefuncion);
         const entidadMatch = text.match(entidadRegexDefuncion);
