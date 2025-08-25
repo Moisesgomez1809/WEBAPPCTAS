@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, Frame, FileCog, BarChart3, Files, Search, ScanLine } from 'lucide-react';
+import { FileUp, Download, Loader2, FileCheck2, AlertCircle, Sparkles, RefreshCcw, Frame, FileCog, BarChart3, Files, Search, ScanLine, Pencil } from 'lucide-react';
 import { getReversePdfAsDataUri, extractDocumentDetails } from '../actions';
 import { mergePdfsClient, modifyReversePdfClient, addFolioToPdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
@@ -13,9 +13,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { ReverseSideEntry } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { extractDataFromPdf } from '@/lib/ocr-utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog"
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 type LoadingStep = 'idle' | 'extractingDetails' | 'matching' | 'modifying' | 'merging' | 'foliating' | 'done';
@@ -110,6 +120,8 @@ export default function DashboardClient() {
   const [mode, setMode] = useState<OperationMode>('ocr');
   const [ocrStatus, setOcrStatus] = useState<OcrStatus>('idle');
   const [ocrData, setOcrData] = useState<OcrData>({ curp: '', electronicId: '', issuingEntity: ''});
+  const [isCorrectionDialogOpen, setIsCorrectionDialogOpen] = useState(false);
+  const [correctionData, setCorrectionData] = useState<OcrData>({ curp: '', electronicId: '', issuingEntity: '' });
 
   const { toast } = useToast();
   const router = useRouter();
@@ -150,10 +162,12 @@ export default function DashboardClient() {
     setAddFolio(false);
     setOcrStatus('idle');
     setOcrData({ curp: '', electronicId: '', issuingEntity: ''});
+    setCorrectionData({ curp: '', electronicId: '', issuingEntity: '' });
+    setIsCorrectionDialogOpen(false);
   }, [previewUrl]);
 
   // Combined processFusion logic for both OCR and Manual modes
-  const processFusion = async (entityToUse: string | null, pdfUri: string, details?: { curp: string | null; electronicId: string | null; }) => {
+  const processFusion = async (entityToUse: string | null, pdfUri: string, details?: { curp: string | null; electronicId: string | null; }, shouldIncrementCounter = true) => {
     if (!pdfUri) {
       toast({ title: "No hay archivo cargado", variant: "destructive" });
       return;
@@ -165,8 +179,10 @@ export default function DashboardClient() {
 
     setStatus('loading');
     setError(null);
-    setEntity(null);
-    setExtractedCurp(null);
+    if(shouldIncrementCounter) {
+        setEntity(null);
+        setExtractedCurp(null);
+    }
     
     try {
       let curp: string | null = null;
@@ -187,8 +203,10 @@ export default function DashboardClient() {
           throw new Error("No se pudo extraer la CURP o el Identificador Electrónico. Asegúrate de que el documento sea claro.");
       }
       
-      setExtractedCurp(curp);
-      setEntity(entityToUse);
+      if(shouldIncrementCounter) {
+          setExtractedCurp(curp);
+          setEntity(entityToUse);
+      }
       
       if(loadingStep !== 'matching') setLoadingStep('matching');
       
@@ -211,7 +229,7 @@ export default function DashboardClient() {
         finalPdf = await addFolioToPdfClient(finalPdf);
       }
 
-      handleProcessSuccess(finalPdf, curp);
+      handleProcessSuccess(finalPdf, curp, shouldIncrementCounter);
 
     } catch (e: any) {
       console.error(e);
@@ -240,11 +258,12 @@ export default function DashboardClient() {
         throw new Error("El OCR no pudo encontrar todos los datos necesarios. Inténtalo en modo Manual.");
       }
       
-      setOcrData(extractedData as OcrData);
-      setOcrStatus('success');
+      const finalOcrData = extractedData as OcrData;
+      setOcrData(finalOcrData);
+      setCorrectionData(finalOcrData); // Also set correction data for later use
 
       // Automatically trigger fusion process
-      await processFusion(extractedData.issuingEntity, dataUri, { curp: extractedData.curp, electronicId: extractedData.electronicId });
+      await processFusion(finalOcrData.issuingEntity, dataUri, { curp: finalOcrData.curp, electronicId: finalOcrData.electronicId });
       
     } catch (e: any) {
         setOcrStatus('error');
@@ -369,7 +388,7 @@ export default function DashboardClient() {
     }
   }
 
-  const handleProcessSuccess = useCallback((finalPdf: string, curp: string | null) => {
+  const handleProcessSuccess = (finalPdf: string, curp: string | null, shouldIncrementCounter: boolean) => {
     setCombinedPdfUrl(finalPdf);
     setMergedPreview(finalPdf);
     setLoadingStep('done');
@@ -379,9 +398,28 @@ export default function DashboardClient() {
       description: `Tu PDF ha sido creado ${addFolio ? 'y foliado' : ''} correctamente. Descargando...`,
     });
     const fileName = curp ? `${curp}_SIST.pdf` : 'acta-fusionada_SIST.pdf';
-    handleDownloadAndSave(finalPdf, fileName, curp);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addFolio]);
+    if(shouldIncrementCounter) {
+        handleDownloadAndSave(finalPdf, fileName, curp);
+    } else {
+        // Just download without incrementing counters
+        const link = document.createElement('a');
+        link.href = finalPdf;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+  };
+
+  const handleReprocess = async () => {
+    if (!originalPdfUrl) {
+        toast({ title: 'Error', description: 'No se encontró el archivo original para re-procesar.', variant: 'destructive' });
+        return;
+    }
+    setIsCorrectionDialogOpen(false);
+    toast({ title: 'Re-procesando con datos corregidos...' });
+    await processFusion(correctionData.issuingEntity, originalPdfUrl, { curp: correctionData.curp, electronicId: correctionData.electronicId }, false);
+  }
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); };
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); };
@@ -445,12 +483,45 @@ export default function DashboardClient() {
         )}
 
         {status === 'success' && combinedPdfUrl && (
-            <div className="text-center p-4">
+            <div className="text-center p-4 space-y-2">
                 <FileCheck2 className="w-12 h-12 text-green-500 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold">Proceso Completado</h3>
-                 <Button onClick={() => handleDownloadAndSave(combinedPdfUrl, extractedCurp ? `${extractedCurp}_SIST.pdf` : 'acta-fusionada_SIST.pdf', extractedCurp)} className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white">
+                 <Button onClick={() => handleDownloadAndSave(combinedPdfUrl, extractedCurp ? `${extractedCurp}_SIST.pdf` : 'acta-fusionada_SIST.pdf', extractedCurp)} className="w-full bg-green-500 hover:bg-green-600 text-white">
                     <Download className="mr-2 h-4 w-4" /> Descargar PDF Fusionado
                 </Button>
+                 <Dialog open={isCorrectionDialogOpen} onOpenChange={setIsCorrectionDialogOpen}>
+                    <DialogTrigger asChild>
+                         <Button variant="outline" className="w-full">
+                            <Pencil className="mr-2 h-4 w-4" /> Corregir y Descargar
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Corregir Datos Extraídos</DialogTitle>
+                            <DialogDescription>
+                                Ajusta los datos que el OCR extrajo si son incorrectos. El documento se volverá a generar con esta nueva información sin afectar tus estadísticas.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="curp" className="text-right">CURP</Label>
+                                <Input id="curp" value={correctionData.curp || ''} onChange={(e) => setCorrectionData({...correctionData, curp: e.target.value})} className="col-span-3" />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="electronicId" className="text-right">ID Electrónico</Label>
+                                <Input id="electronicId" value={correctionData.electronicId || ''} onChange={(e) => setCorrectionData({...correctionData, electronicId: e.target.value})} className="col-span-3" />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="issuingEntity" className="text-right">Entidad</Label>
+                                <Input id="issuingEntity" value={correctionData.issuingEntity || ''} onChange={(e) => setCorrectionData({...correctionData, issuingEntity: e.target.value})} className="col-span-3" />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                          <DialogClose asChild><Button type="button" variant="secondary">Cancelar</Button></DialogClose>
+                          <Button onClick={handleReprocess}>Guardar y Re-procesar</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         )}
         
@@ -555,7 +626,5 @@ export default function DashboardClient() {
     </main>
   );
 }
-
-
 
     
