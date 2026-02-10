@@ -78,6 +78,44 @@ export async function getReversePdfAsDataUri(url: string): Promise<string> {
     }
 }
 
+
+export async function backupStatToSheet(url: string, day: string, count: number): Promise<{success: boolean; error?: string}> {
+  if (!url || !url.startsWith('https://script.google.com/macros/s/')) {
+    return { success: false, error: 'URL de Apps Script inválida.' };
+  }
+
+  try {
+    // Apps Script web apps can receive parameters via query string on POST requests.
+    const backupUrl = new URL(url);
+    backupUrl.searchParams.append('action', 'guardarCifraPorDia');
+    backupUrl.searchParams.append('dia', day);
+    backupUrl.searchParams.append('cifra', count.toString());
+
+    // We use a POST request to signal a state change and avoid caching.
+    const response = await fetch(backupUrl.toString(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      // An empty body is fine as data is in the URL.
+      body: '',
+      redirect: 'follow' // This is important for Apps Script web apps which often redirect.
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Apps Script backup failed. Status:', response.status, 'Response:', errorText);
+      throw new Error(`El servidor de respaldo respondió con un error. Revisa la configuración de tu script.`);
+    }
+    
+    return { success: true };
+
+  } catch (error: any) {
+    console.error("Failed to backup to sheet:", error);
+    return { success: false, error: error.message || 'No se pudo conectar con el servicio de respaldo.' };
+  }
+}
+
 // Re-export AI flows for easier and consistent import on the client-side component.
 export const extractIssuingEntity = extractEntityFlow;
 export const extractDocumentDetails = extractDetailsFlow;

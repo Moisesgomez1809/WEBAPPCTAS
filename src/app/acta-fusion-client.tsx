@@ -1,12 +1,12 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Files, ShoppingCart, Lock, Unlock, TrendingUp, CalendarDays, Pencil, Download, History, AlertCircle, Search } from 'lucide-react';
+import { ArrowLeft, Upload, BarChart3, Combine, Stamp, Trash2, Frame, Wallet, FileCog, Files, ShoppingCart, Lock, Unlock, TrendingUp, CalendarDays, Pencil, Download, History, AlertCircle, Search, Database } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -53,6 +53,8 @@ import {
 import type { ChartConfig } from "@/components/ui/chart";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { cn } from '@/lib/utils';
+import { backupStatToSheet } from '../actions';
+import { Switch } from '@/components/ui/switch';
 
 
 interface Stats {
@@ -87,6 +89,14 @@ const getWeekNumber = (d: Date): number => {
 const dayNames = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const orderedDayIndexes = [1, 2, 3, 4, 5, 6, 0]; // Lunes a Domingo
 
+const usePrevious = (value: number[] | undefined) => {
+  const ref = useRef<number[] | undefined>();
+  useEffect(() => {
+    ref.current = value;
+  });
+  return ref.current;
+};
+
 export default function ActaFusionClient() {
   const [stats, setStats] = useState<Stats>({ total: 0 });
   const [dailyStats, setDailyStats] = useState<number[]>(Array(7).fill(0));
@@ -99,6 +109,9 @@ export default function ActaFusionClient() {
   const [filteredHistory, setFilteredHistory] = useState<DisplayHistoryItem[]>([]);
   const [historyFilter, setHistoryFilter] = useState<string>("all");
   const [curpSearchQuery, setCurpSearchQuery] = useState<string>("");
+  const [backupUrl, setBackupUrl] = useState('');
+  const [backupEnabled, setBackupEnabled] = useState(false);
+  const prevDailyStats = usePrevious(dailyStats);
 
 
   const router = useRouter();
@@ -162,6 +175,12 @@ export default function ActaFusionClient() {
 
     if (savedGoal) setWeeklyGoal(parseInt(savedGoal, 10));
     if (savedIsLocked) setIsGoalLocked(JSON.parse(savedIsLocked));
+
+    // Load backup settings
+    const savedBackupUrl = localStorage.getItem('backupUrl') || '';
+    const savedBackupEnabled = localStorage.getItem('backupEnabled') === 'true';
+    setBackupUrl(savedBackupUrl);
+    setBackupEnabled(savedBackupEnabled);
   };
 
   useEffect(() => {
@@ -187,6 +206,45 @@ export default function ActaFusionClient() {
     setFilteredHistory(newFilteredHistory);
   }, [historyFilter, curpSearchQuery, fullHistory]);
   
+  // Backup effect
+  useEffect(() => {
+    if (!backupEnabled || !backupUrl || !prevDailyStats) return;
+
+    const backupStat = async (dayIndex: number, count: number) => {
+        const dayName = dayNames[dayIndex];
+        const normalizedDayName = dayName.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+        try {
+            const result = await backupStatToSheet(backupUrl, normalizedDayName, count);
+            if (!result.success) {
+                toast({
+                    title: `Error de Respaldo (${dayName})`,
+                    description: result.error,
+                    variant: 'destructive'
+                });
+                // Disable on failure to prevent spamming toasts
+                setBackupEnabled(false);
+                localStorage.setItem('backupEnabled', 'false');
+            }
+        } catch (e: any) {
+            toast({
+                title: `Error de Respaldo (${dayName})`,
+                description: "No se pudo conectar al servicio. Revisa la URL y la consola.",
+                variant: 'destructive'
+            });
+             // Disable on failure
+            setBackupEnabled(false);
+            localStorage.setItem('backupEnabled', 'false');
+        }
+    };
+
+    dailyStats.forEach((count, dayIndex) => {
+        if (prevDailyStats[dayIndex] !== count) {
+            backupStat(dayIndex, count);
+        }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dailyStats]);
 
   const handleManualAdjustment = () => {
     if (adjustmentDay === "") {
@@ -381,6 +439,32 @@ export default function ActaFusionClient() {
     }
   }
   
+  const handleBackupUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newUrl = e.target.value;
+    setBackupUrl(newUrl);
+    localStorage.setItem('backupUrl', newUrl);
+    if (!newUrl && backupEnabled) {
+        setBackupEnabled(false);
+        localStorage.setItem('backupEnabled', 'false');
+        toast({ title: "Respaldo desactivado", description: "La URL fue eliminada."});
+    }
+  };
+
+  const handleBackupEnabledChange = (checked: boolean) => {
+      setBackupEnabled(checked);
+      localStorage.setItem('backupEnabled', checked.toString());
+      if (checked) {
+          toast({
+              title: "Respaldo Activado",
+              description: "Los conteos se respaldarán en tu Google Sheet al cambiar."
+          })
+      } else {
+           toast({
+              title: "Respaldo Desactivado",
+          })
+      }
+  };
+
   const todayIndex = new Date().getDay();
 
   return (
@@ -666,6 +750,50 @@ export default function ActaFusionClient() {
             </Card>
 
         </div>
+
+        <Card className="w-full max-w-7xl mt-8 shadow-lg">
+            <CardHeader>
+                <div className="flex items-center space-x-2">
+                    <Database className="h-6 w-6 text-primary"/>
+                    <CardTitle>Respaldo en Google Sheets</CardTitle>
+                </div>
+                <CardDescription>
+                    Activa esta opción para enviar automáticamente una copia de tus conteos diarios a una hoja de cálculo de Google. 
+                    Esto requiere un App Script configurado. Pega la URL de tu Web App abajo.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="backup-url">URL del Web App de Apps Script</Label>
+                    <Input 
+                        id="backup-url"
+                        placeholder="https://script.google.com/macros/s/..."
+                        value={backupUrl}
+                        onChange={handleBackupUrlChange}
+                    />
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Switch 
+                        id="backup-switch" 
+                        checked={backupEnabled}
+                        onCheckedChange={handleBackupEnabledChange}
+                        disabled={!backupUrl}
+                    />
+                    <Label htmlFor="backup-switch">
+                        {backupEnabled ? 'Respaldo automático activado' : 'Respaldo automático desactivado'}
+                    </Label>
+                </div>
+                {!backupUrl && (
+                    <Alert variant="default" className="border-amber-500 text-amber-700 [&>svg]:text-amber-600">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>URL Requerida</AlertTitle>
+                        <AlertDescription>
+                            Debes proporcionar una URL para poder activar el respaldo.
+                        </AlertDescription>
+                    </Alert>
+                )}
+            </CardContent>
+        </Card>
     </main>
   );
 }
