@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FileUp, Loader2, CheckCircle2, AlertCircle, Trash2, Files, Sparkles, Download, ListPlus, FileCheck2, RefreshCcw, ScanSearch, Wand2 } from 'lucide-react';
 import { getReversePdfAsDataUri, extractDocumentDetails } from '../actions';
-import { mergePdfsClient, modifyReversePdfClient } from '@/lib/pdf-utils';
+import { mergePdfsClient, modifyReversePdfClient, addFolioToPdfClient } from '@/lib/pdf-utils';
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ReverseSideEntry } from '@/lib/types';
@@ -84,6 +84,7 @@ function findReverseSide(entity: string, db: ReverseSideEntry[]): ReverseSideEnt
 
 export default function BulkFusionClient() {
   const [mode, setMode] = useState<OperationMode>('manual');
+  const [addFolio, setAddFolio] = useState(false);
   
   // --- Manual Mode State ---
   const [manualRawFiles, setManualRawFiles] = useState<RawFile[]>([]);
@@ -214,6 +215,7 @@ export default function BulkFusionClient() {
     setManualQueue([]);
     setSelectedState('');
     setOcrQueue([]);
+    setAddFolio(false);
     if (currentPreviewUrl) {
       URL.revokeObjectURL(currentPreviewUrl);
       setCurrentPreviewUrl(null);
@@ -330,7 +332,11 @@ export default function BulkFusionClient() {
             
             const reversePdfDataUri = await getReversePdfAsDataUri(reverseSideEntry['link del reverso para descarga directa']);
             const modifiedReversePdfUri = await modifyReversePdfClient(reversePdfDataUri, item.curp, item.electronicId);
-            const finalPdf = await mergePdfsClient(fileDataUri, modifiedReversePdfUri);
+            let finalPdf = await mergePdfsClient(fileDataUri, modifiedReversePdfUri);
+
+            if (addFolio) {
+                finalPdf = await addFolioToPdfClient(finalPdf);
+            }
             
             incrementCounters(item.curp);
             
@@ -534,7 +540,7 @@ export default function BulkFusionClient() {
       </header>
 
        <Card className="w-full max-w-md mx-auto mb-8">
-            <CardContent className="p-4">
+            <CardContent className="p-4 flex flex-col gap-4">
                  <div className="flex items-center justify-center space-x-4">
                     <Label htmlFor="mode-switch" className={mode === 'manual' ? 'font-bold text-primary' : 'text-muted-foreground'}>
                       Manual
@@ -542,13 +548,28 @@ export default function BulkFusionClient() {
                     <Switch 
                         id="mode-switch"
                         checked={mode === 'automated'}
-                        onCheckedChange={(checked) => setMode(checked ? 'automated' : 'manual')}
+                        onCheckedChange={(checked) => {
+                            const newMode = checked ? 'automated' : 'manual';
+                            setMode(newMode);
+                            if (newMode === 'manual') {
+                                setAddFolio(false);
+                            }
+                        }}
                         disabled={isProcessingManual || isAnalyzingOcr || isFusingOcr}
                     />
                     <Label htmlFor="mode-switch" className={mode === 'automated' ? 'font-bold text-primary' : 'text-muted-foreground'}>
                       Automatizado
                     </Label>
                 </div>
+                {mode === 'automated' && (
+                    <>
+                        <div className="w-full border-t"></div>
+                        <div className="flex items-center justify-center space-x-2">
+                            <Switch id="folio-switch" checked={addFolio} onCheckedChange={setAddFolio} />
+                            <Label htmlFor="folio-switch">Añadir Folio</Label>
+                        </div>
+                    </>
+                )}
             </CardContent>
              <CardFooter className="p-2 pt-0">
                 <Button onClick={handleResetAll} variant="outline" size="sm" className="w-full" disabled={isProcessingManual || isAnalyzingOcr || isFusingOcr}>
